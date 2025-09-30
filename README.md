@@ -39,6 +39,8 @@
   ```
 1. The script does the rest
 
+You will see a new row get added to the bottom of the table, with the cell value of: "Sum: 349, Avg: 116.33"
+
 ---
 
 ## Supported Keywords
