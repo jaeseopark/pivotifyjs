@@ -1,9 +1,10 @@
 import {
     COMPUTE_KEYWORD
-} from "../constants.js";
+} from "@/constants.js";
 
 /**
- * Parses PIVOTIFYJS_COMPUTE lines.
+ * Parses PIVOTIFYJS_COMPUTE lines. Only 1 computed field allowed per line, separated by <br> tags.
+ * 
  * @param {string} text
  * @returns {Array<{column:string, equation:string, variables:Array<{column:string, default:string|number}>}>}
  */
@@ -18,21 +19,28 @@ export const getComputations = (text: string): {
             const match = line.match(/PIVOTIFYJS_COMPUTE:"([^"]+)"=(.+)/);
             if (!match) return null;
             const column = match[1];
-            const equation = match[2].trim();
-            const variables = equation.split("*").map(factor => {
-                const [col, def] = factor.split(":");
+            const equation = match[2]!.trim();
+
+            // Remove default values from the equation for the output if present
+            const equationStripped = equation.replace(/"([^":]+)(?::([^"]+))?"/g, (_, col) => `"${col}"`);
+
+            const variableRegex = /"([^":]+)(?::([^"]+))?"/g;
+            const variables: { column: string; default: string | number }[] = [];
+            let matchVar;
+            while ((matchVar = variableRegex.exec(equation)) !== null) {
+                const col = matchVar[1];
+                const def = matchVar[2];
                 let defaultValue: string | number = "";
                 if (def !== undefined) {
-                    // Try to convert to number if possible
                     const num = Number(def.trim());
                     defaultValue = isNaN(num) ? def.trim() : num;
                 }
-                return {
-                    column: col.trim(),
+                variables.push({
+                    column: col!.trim(),
                     default: defaultValue
-                };
-            });
-            return { column: column as string, equation, variables };
+                });
+            }
+            return { column: column as string, equation: equationStripped, variables };
         })
         .filter((item): item is { column: string; equation: string; variables: { column: string; default: string | number }[] } => item !== null);
 };
@@ -84,6 +92,7 @@ export const appendComputedColumns = (table: HTMLTableElement, text: string) => 
             // Evaluate the substituted equation
             let computedValue = "";
             try {
+                // TODO: make this more secure. passing user input to eval is dangerous.
                 computedValue = eval(substitutedEquation);
             } catch (e) {
                 computedValue = "";

@@ -1,6 +1,7 @@
 {
   "name": "pivotifyjs",
   "version": "0.0.3",
+  "type": "module",
   "description": "Spreadsheet-like pivot table features for HTML tables.",
   "main": "src/pivotify.ts",
   "repository": {
@@ -25,6 +26,5 @@
   "files": [
     "dist/",
     "src/"
-  ],
-  "type": "module"
+  ]
 }

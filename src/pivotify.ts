@@ -1,55 +1,13 @@
-import { getAggregations} from "./utils.js";
-import { appendComputedColumns } from "./utils/computation.js";
+import { aggregateTable, appendComputedColumns } from "@/utils";
+
 
 const processTable = (table: HTMLTableElement, p: HTMLParagraphElement): HTMLTableElement => {
     const text = p.innerHTML;
 
-   const newTable = table.cloneNode(true) as HTMLTableElement;
-    
+    const newTable = table.cloneNode(true) as HTMLTableElement;
+
     appendComputedColumns(newTable, text);
-
-    // TODO: mutate newTable further
-
-    // // Get aggregations and computations from the <p> text
-    // const { sumCols, avgCols, minCols, maxCols, medianCols, firstCols } = getAggregations(text);
-
-    // // Handle summary row for supported aggregations
-    // const headers = Array.from(table.querySelectorAll("thead th")).map(th => th.textContent.trim());
-    // const newRow = document.createElement("tr");
-    // headers.forEach((header, colIndex) => {
-    //     const td = document.createElement("td");
-    //     let parts = [];
-    //     if (sumCols.includes(header)) {
-    //         const { sum } = aggregateColumn(table, colIndex);
-    //         parts.push(`Sum=${sum}`);
-    //     }
-    //     if (avgCols.includes(header)) {
-    //         const { avg } = aggregateColumn(table, colIndex);
-    //         parts.push(`Avg=${avg.toFixed(2)}`);
-    //     }
-    //     if (minCols && minCols.includes(header)) {
-    //         const { min } = aggregateColumn(table, colIndex);
-    //         parts.push(`Min=${min}`);
-    //     }
-    //     if (maxCols && maxCols.includes(header)) {
-    //         const { max } = aggregateColumn(table, colIndex);
-    //         parts.push(`Max=${max}`);
-    //     }
-    //     if (medianCols && medianCols.includes(header)) {
-    //         const { median } = aggregateColumn(table, colIndex);
-    //         parts.push(`Median=${median}`);
-    //     }
-    //     if (firstCols && firstCols.includes(header)) {
-    //         const { first } = aggregateColumn(table, colIndex);
-    //         parts.push(`First=${first}`);
-    //     }
-    //     td.textContent = parts.join(", ");
-    //     newRow.appendChild(td);
-    // });
-    // table.querySelector("tbody").appendChild(newRow);
-
-    // // Remove the <p> after processing
-    // p.remove();
+    aggregateTable(newTable, text);
 
     return newTable;
 };
