@@ -3,7 +3,7 @@ import {
 } from "@/constants.js";
 
 /**
- * Parses PIVOTIFYJS_COMPUTE lines. Only 1 computed field allowed per line, separated by <br> tags.
+ * Parses PIVOTIFYJS_COMPUTE lines. Only 1 computed field allowed per line, separated by <br> tags or by newlines.
  * 
  * @param {string} text
  * @returns {Array<{column:string, equation:string, variables:Array<{column:string, default:string|number}>}>}
@@ -11,9 +11,10 @@ import {
 export const getComputations = (text: string): {
     column: string;
     equation: string;
-    variables: { column: string; default: string | number }[];
+    variables: { column: string; default: string }[];
 }[] => {
-    const lines = text.split("<br>").filter(line => line.trim().startsWith(COMPUTE_KEYWORD));
+    // Support both <br> and newline as line separators (Windows compatible)
+    const lines = text.split(/<br>|\r?\n/).filter(line => line.trim().startsWith(COMPUTE_KEYWORD));
     return lines
         .map(line => {
             const match = line.match(/PIVOTIFYJS_COMPUTE:"([^"]+)"=(.+)/);
@@ -22,19 +23,15 @@ export const getComputations = (text: string): {
             const equation = match[2]!.trim();
 
             // Remove default values from the equation for the output if present
-            const equationStripped = equation.replace(/"([^":]+)(?::([^"]+))?"/g, (_, col) => `"${col}"`);
+            const equationStripped = equation.replace(/\$\{([^}:]+)(?::([^}]+))?\}/g, (_, col) => `\${${col}}`);
 
-            const variableRegex = /"([^":]+)(?::([^"]+))?"/g;
-            const variables: { column: string; default: string | number }[] = [];
+            const variableRegex = /\$\{([^}:]+)(?::([^}]+))?\}/g;
+            const variables: { column: string; default: string }[] = [];
             let matchVar;
             while ((matchVar = variableRegex.exec(equation)) !== null) {
                 const col = matchVar[1];
                 const def = matchVar[2];
-                let defaultValue: string | number = "";
-                if (def !== undefined) {
-                    const num = Number(def.trim());
-                    defaultValue = isNaN(num) ? def.trim() : num;
-                }
+                let defaultValue: string = def !== undefined ? def.trim() : "";
                 variables.push({
                     column: col!.trim(),
                     default: defaultValue
@@ -42,7 +39,7 @@ export const getComputations = (text: string): {
             }
             return { column: column as string, equation: equationStripped, variables };
         })
-        .filter((item): item is { column: string; equation: string; variables: { column: string; default: string | number }[] } => item !== null);
+        .filter((item): item is { column: string; equation: string; variables: { column: string; default: string }[] } => item !== null);
 };
 
 /**
@@ -56,53 +53,49 @@ export const appendComputedColumns = (table: HTMLTableElement, text: string) => 
 
     computations.forEach(comp => {
         // Note headers need to be re-fetched for each computation in case multiple computations are chained.
-        const headers = Array.from(table.querySelectorAll("thead th")).map(th => th.textContent.trim());
+        const thead = table.querySelector("thead");
+        const theadCells = thead!.querySelectorAll("th"); // assume only one thead row in a table.
+        const headers = Array.from(theadCells).map(th => th.textContent.trim());
 
         // Build columnReverseIndex: { [columnName: string]: number }
-        const columnReverseIndex = {};
-        headers.forEach((header, idx) => {
-            columnReverseIndex[header] = idx;
-        });
+        const columnReverseIndex = headers.reduce((acc, header, idx) => {
+            acc[header] = idx;
+            return acc;
+        }, {} as { [column: string]: number });
 
         // Add new column header
-        const theadRow = table.querySelector("thead tr");
         const th = document.createElement("th");
         th.textContent = comp.column;
-        theadRow.appendChild(th);
+        thead!.appendChild(th);
 
-        // Compute each row value
-        Array.from(table.querySelectorAll("tbody tr")).forEach(tr => {
+        // Re-query rows after header change
+        const trs = table.querySelectorAll("tbody tr");
+        trs.forEach(tr => {
             const row = tr.querySelectorAll("td");
 
             // Substitute variables in the equation with actual values from the row
             let substitutedEquation = comp.equation;
             comp.variables.forEach(variable => {
-                const colIdx = columnReverseIndex[variable.column];
+                const colIdx: number = columnReverseIndex[variable.column];
                 let value = variable.default;
                 if (colIdx !== undefined && row[colIdx]) {
-                    const cellVal = row[colIdx].textContent.trim();
-                    value = cellVal || variable.default;
+                    value = row[colIdx].textContent.trim();
                 }
-                // Replace all occurrences of the column name in the equation with its value
-                // Use word boundaries to avoid partial replacements
-                const regex = new RegExp(`\\b${variable.column}\\b`, "g");
-                substitutedEquation = substitutedEquation.replace(regex, value);
+                if (!isNaN(Number(value))) {
+                    // Replace all occurrences of the variable in the equation with its numeric value
+                    const regex = new RegExp(`\\$\\{${variable.column}\\}`, "g");
+                    substitutedEquation = substitutedEquation.replace(regex, value);
+                } else {
+                    throw new Error(`Non-numeric value for column ${variable.column}: '${value}' typeof: ${typeof value}`);
+                }
             });
 
-            // Evaluate the substituted equation
-            let computedValue = "";
-            try {
-                // TODO: make this more secure. passing user input to eval is dangerous.
-                computedValue = eval(substitutedEquation);
-            } catch (e) {
-                computedValue = "";
-            }
+            // TODO: make this more secure. passing user input to eval is dangerous.
+            const computedValue = eval(substitutedEquation);
 
             const td = document.createElement("td");
             td.textContent = computedValue;
             tr.appendChild(td);
         });
-
-        headers.push(comp.column);
     });
 };
