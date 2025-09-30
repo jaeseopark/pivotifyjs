@@ -34,7 +34,7 @@
 
   <p>
     PIVOTIFYJS_SUM:["Annual Cost"]<br>
-    PIVOTIFYJS_AVG:["Annual Cost"]
+    PIVOTIFYJS_AVERAGE:["Annual Cost"]
   </p>
   ```
 1. The script does the rest
@@ -45,5 +45,4 @@ You will see a new row get added to the bottom of the table, with the cell value
 
 ## Supported Keywords
 
-* `PIVOTIFYJS_SUM`
-* `PIVOTIFYJS_AVG`
+See [`constants.js`](src/constants.js).
