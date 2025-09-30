@@ -1,6 +1,6 @@
 {
   "name": "pivotifyjs",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Spreadsheet-like pivot table features for HTML tables.",
   "main": "src/pivotify.js",
   "repository": {
@@ -15,5 +15,9 @@
   "license": "MIT",
   "devDependencies": {
     "esbuild": "^0.25.10"
-  }
+  },
+  "files": [
+    "dist/",
+    "src/"
+  ]
 }
