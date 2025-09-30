@@ -3,6 +3,10 @@
   "version": "0.0.2",
   "description": "Spreadsheet-like pivot table features for HTML tables.",
   "main": "src/pivotify.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jaeseopark/pivotifyjs"
+  },
   "scripts": {
     "test": "echo \"No tests yet\"",
     "build": "esbuild src/pivotify.js --bundle --minify --outfile=dist/pivotify.min.js"
