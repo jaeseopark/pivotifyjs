@@ -39,8 +39,6 @@ const AGGREGATION_SIGNATURE_MAP: {
             if (values.length === 0) return 0;
             const sorted = [...values].sort((a, b) => a - b);
             const mid = Math.floor(sorted.length / 2);
-            // Split the array in halves and return the first item within the second array
-            // TODO: make this logic more robust (null handling, etc.)
             return sorted.slice(mid)[0] as number;
         },
         label: "Median"
@@ -68,6 +66,15 @@ type GetAggregationsReturnType = {
     uniqueAggregatorEnums: Set<AggregatorEnum>
 }
 
+const getGroupIdGenerator = (groups: string[], columnReverseMap: Map<string, number>) => {
+    return (cellValues: CellValue[]) => {
+        return groups.map(group => {
+            const colIdx = columnReverseMap.get(group);
+            return colIdx !== undefined ? cellValues[colIdx] : "";
+        }).join("||");
+    };
+};
+
 export const getAggregations = (text: string): GetAggregationsReturnType => {
     return Object.values(AggregatorEnum).reduce((acc, aggregatorEnum) => {
         const cols = getColumns(text, aggregatorEnum);
@@ -86,15 +93,44 @@ export const getAggregations = (text: string): GetAggregationsReturnType => {
     } as GetAggregationsReturnType);
 };
 
+/**
+ * Constructs a new table element with <thead> and <tbody> sections.
+ * All headers should be populated, but no rows are added yet.
+ * @returns {HTMLTableElement} A blank HTML table element.
+ */
+export const getBlankTable = (): HTMLTableElement => {
+    const table = document.createElement("table");
+    const thead = document.createElement("thead");
+    const tbody = document.createElement("tbody");
+    table.appendChild(thead);
+    table.appendChild(tbody);
+    return table;
+};
+
+
+/**
+ * Populates the table header row with the given column names.
+ * @param table - The HTMLTableElement to populate.
+ * @param columns - Array of column names to use as headers.
+ */
+export const populateHeaders = (table: HTMLTableElement, columns: string[]) => {
+    const thead = table.querySelector("thead");
+    if (!thead) return;
+    // Remove any existing header rows
+    thead.innerHTML = "";
+    const headerRow = document.createElement("tr");
+    columns.forEach(col => {
+        const th = document.createElement("th");
+        th.textContent = col;
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+};
+
+
 class AggregationCoordinator {
     table: HTMLTableElement;
-    /**
-     * Array of column names to group by
-     */
     groups: string[];
-    /**
-     * Keyed by column name, value is array of aggregation signatures to apply
-     */
     aggregations: ReturnType<typeof getAggregations>["aggregations"];
 
     constructor(table: HTMLTableElement, text: string) {
@@ -109,7 +145,52 @@ class AggregationCoordinator {
     }
 
     collapseTable() {
-        // Implementation for building a collapsed table based on groups
+        const rows = Array.from(this.table.querySelectorAll("tbody tr")) as HTMLTableRowElement[];
+        // Fix: use "th" not "td" for header cells
+        const columnReverseMap = new Map(
+            Array.from(this.table.querySelectorAll("thead th")).map((th, idx) => [th.textContent?.trim() ?? "", idx])
+        );
+        const groupIdGenerator = getGroupIdGenerator(this.groups, columnReverseMap);
+
+        // Group rows by the groupId
+        const groupedRows = rows.reduce((acc, row) => {
+            const cells = row.querySelectorAll("td");
+            const cellValues = Array.from(cells).map(td => td.textContent?.trim() ?? "");
+            const groupId = groupIdGenerator(cellValues);
+
+            acc[groupId] = acc[groupId] || { cellValues, rows: [] };
+            acc[groupId].rows.push(row);
+            return acc;
+        }, {} as {
+            [groupId: string]: {
+                cellValues: CellValue[],
+                rows: HTMLTableRowElement[],
+            }
+        });
+
+        // construct a new table with grouped rows and aggregation results.
+        const columns = [
+            ...this.groups,
+            ...Object.keys(this.aggregations)
+        ]
+        const newTable = getBlankTable();
+        populateHeaders(newTable, columns);
+
+        Object.values(groupedRows).forEach(({ cellValues: staticCellValues, rows }) => {
+            const newRow = document.createElement("tr");
+            const cellValues = [
+                ...staticCellValues,
+                // placeholder for aggregation results
+            ]
+
+            cellValues.forEach((value) => {
+                const td = document.createElement("td");
+                td.textContent = String(value);
+                newRow.appendChild(td);
+            });
+        });
+
+        this.table.replaceWith(newTable);
     }
 
     appendSummaryRow() {
@@ -140,17 +221,14 @@ class AggregationCoordinator {
             const aggResults = aggregatorEnums.map((aggregatorEnum: AggregatorEnum) => {
                 let aggResult: CellValue;
                 if (aggregatorEnum === AggregatorEnum.FIRST) {
-                    // This is a special case where 'values' can be of mixed types.
                     aggResult = AGGREGATION_SIGNATURE_MAP[aggregatorEnum].handler(values);
                 } else {
-                    // rest of aggregations expect numeric values
                     aggResult = AGGREGATION_SIGNATURE_MAP[aggregatorEnum].handler(values as number[]);
                 }
 
                 let stringifiedResult: string;
                 if (typeof aggResult === "number") {
                     stringifiedResult = aggResult.toFixed(DEFAULT_DECIMAL_PLACES);
-                    // Drop the decimal places if not needed
                     if (stringifiedResult.endsWith(".00")) {
                         stringifiedResult = stringifiedResult.slice(0, -3);
                     }
@@ -167,7 +245,7 @@ class AggregationCoordinator {
                 summaryCell.textContent = aggResults.join(", ");
             }
         });
-    };
+    }
 
     aggregate() {
         if (this.groups.length > 0) {

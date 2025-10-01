@@ -30,7 +30,7 @@ export function processAllTables() {
 
         // Replace the original table with the processed one.
         const processedTable = processTable(table, p);
-        table.parentNode?.replaceChild(processedTable, table);
+        table.replaceWith(processedTable);
 
         // Remove the paragraph after processing.
         p.remove();
