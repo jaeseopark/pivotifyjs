@@ -1,15 +1,27 @@
 import { aggregateTable, appendComputedColumns } from "@/utils";
 
 
-const processTable = (table: HTMLTableElement, p: HTMLParagraphElement): HTMLTableElement => {
+/**
+ * Populates computed fields and aggregates the data.
+ * Returns a new table DOM after processing. Returns undefined if no relevant instructions are found.
+ *
+ * @param table - The HTMLTableElement to process.
+ * @param p - The HTMLParagraphElement containing instructions.
+ * @returns {HTMLTableElement | undefined} The processed table element, or undefined if no instructions are found.
+ */
+const processTable = (table: HTMLTableElement, p: HTMLParagraphElement): HTMLTableElement | undefined => {
     const text = p.innerHTML;
 
     const newTable = table.cloneNode(true) as HTMLTableElement;
 
-    appendComputedColumns(newTable, text);
-    aggregateTable(newTable, text);
+    const { canCompute, compute } = appendComputedColumns(newTable, text);
+    const { canAggregate, aggregate } = aggregateTable(newTable, text);
 
-    return newTable;
+    if (canCompute || canAggregate) {
+        compute();
+        aggregate();
+        return newTable;
+    }
 };
 
 const getSiblingParagraph = (table: HTMLTableElement): HTMLParagraphElement | null => {
@@ -28,12 +40,11 @@ export function processAllTables() {
             return;
         }
 
-        // Replace the original table with the processed one.
         const processedTable = processTable(table, p);
-        table.replaceWith(processedTable);
-
-        // Remove the paragraph after processing.
-        p.remove();
+        if (processedTable) {
+            table.replaceWith(processedTable);
+            p.remove();
+        }
     });
 }
 

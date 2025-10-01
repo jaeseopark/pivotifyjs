@@ -51,7 +51,7 @@ export const appendComputedColumns = (table: HTMLTableElement, text: string) => 
     // Use getComputations to parse computation objects
     const computations = getComputations(text);
 
-    computations.forEach(comp => {
+    const compute = () => computations.forEach(comp => {
         // Note headers need to be re-fetched for each computation in case multiple computations are chained.
         const thead = table.querySelector("thead");
         const theadCells = thead!.querySelectorAll("th"); // assume only one thead row in a table.
@@ -98,4 +98,9 @@ export const appendComputedColumns = (table: HTMLTableElement, text: string) => 
             tr.appendChild(td);
         });
     });
+
+    return {
+        canCompute: computations.length > 0,
+        compute
+    }
 };

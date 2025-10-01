@@ -2,6 +2,7 @@ import { aggregateTable, getAggregations } from "@/utils/aggregation";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import path from "path";
+import { processAllTables } from "@/pivotifyjs";
 
 function loadTableFromHtml(htmlFile = "subscriptions.simple.html") {
     const htmlPath = path.resolve(
@@ -52,5 +53,16 @@ describe("aggregateTable", () => {
         expect(summaryCell).toBeDefined();
         // Should contain both "Sum:" and "Avg:" in the cell text
         expect(summaryCell?.textContent).toEqual("Sum: 349, Avg: 116.33");
+    });
+});
+
+describe("aggregateTable with groups", () => {
+    it("adds subtotal rows for each group and a grand total row", () => {
+        const table = loadTableFromHtml("subscriptions.complex.html");
+        window.document = table.ownerDocument as Document;
+        processAllTables();
+
+        const rowCount = table.querySelectorAll("tbody tr").length;
+        expect(rowCount).toBe(3);
     });
 });

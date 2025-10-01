@@ -66,12 +66,27 @@ type GetAggregationsReturnType = {
     uniqueAggregatorEnums: Set<AggregatorEnum>
 }
 
-const getGroupIdGenerator = (groups: string[], columnReverseMap: Map<string, number>) => {
-    return (cellValues: CellValue[]) => {
-        return groups.map(group => {
+type GetGroupIdReturnType = (allCellValues: CellValue[]) => {
+    groupId: string,
+    distinctCellValues: CellValue[]
+};
+
+const getGroupIdGenerator = (groups: string[], columnReverseMap: Map<string, number>): GetGroupIdReturnType => {
+    return (allCellValues: CellValue[]) => {
+        const distinctCellValues = groups.map(group => {
             const colIdx = columnReverseMap.get(group);
-            return colIdx !== undefined ? cellValues[colIdx] : "";
-        }).join("||");
+            if (colIdx === undefined) {
+                return "";
+            }
+            return allCellValues[colIdx] as CellValue;
+        });
+
+        const groupId = distinctCellValues.join("||");
+
+        return {
+            groupId,
+            distinctCellValues
+        }
     };
 };
 
@@ -127,6 +142,70 @@ export const populateHeaders = (table: HTMLTableElement, columns: string[]) => {
     thead.appendChild(headerRow);
 };
 
+/**
+ * Adds a blank row to the table body.
+ * The number of cells in the row matches the number of header columns.
+ * Throws an error if the table does not have any headers.
+ *
+ * @param table - The HTMLTableElement to add the row to.
+ */
+const addBlankRow = (table: HTMLTableElement): void => {
+    const cellCount = table.querySelectorAll("thead th").length;
+    if (cellCount === 0) {
+        throw new Error("Table must have headers before adding rows.");
+    }
+
+    // Append a new blank row
+    const tbody = table.querySelector("tbody");
+    const newRow = document.createElement("tr");
+    newRow.append(...Array.from({ length: cellCount }, () => document.createElement("td")));
+    tbody?.appendChild(newRow);
+};
+
+const getAggregatedCellValue = (aggregatorEnum: AggregatorEnum, values: CellValue[]) => {
+    let aggResult: CellValue;
+    if (aggregatorEnum === AggregatorEnum.FIRST) {
+        aggResult = AGGREGATION_SIGNATURE_MAP[aggregatorEnum].handler(values);
+    } else {
+        aggResult = AGGREGATION_SIGNATURE_MAP[aggregatorEnum].handler(values as number[]);
+    }
+
+    let stringifiedResult: string;
+    if (typeof aggResult === "number") {
+        stringifiedResult = aggResult.toFixed(DEFAULT_DECIMAL_PLACES);
+        if (stringifiedResult.endsWith(".00")) {
+            stringifiedResult = stringifiedResult.slice(0, -3);
+        }
+    } else {
+        stringifiedResult = String(aggResult);
+    }
+
+    return `${AGGREGATION_SIGNATURE_MAP[aggregatorEnum].label}: ${stringifiedResult}`;
+}
+
+const populateCell = (row: HTMLTableRowElement, column: { name: string, index: number }, rows: HTMLTableRowElement[], aggregations: {
+    [column: string]: AggregatorEnum[]
+}) => {
+    console.log(`Populating cell for column: ${column.name} at index ${column.index}`);
+    const values = rows.map(row => {
+        const cell = row.querySelectorAll("td")[column.index];
+        if (!cell) return "";
+        const val = cell.textContent?.trim() ?? "";
+        return isNaN(Number(val)) || val === "" ? val : Number(val);
+    });
+
+    const aggregatorEnums = aggregations[column.name];
+    if (!aggregatorEnums || aggregatorEnums.length === 0) return;
+
+    // Apply all aggregation handlers and format output
+    const aggResults = aggregatorEnums.map(aggregatorEnum => getAggregatedCellValue(aggregatorEnum, values));
+
+    // Output the resulting values by joining with commas
+    const summaryCell = row.querySelectorAll("td")[column.index];
+    if (summaryCell) {
+        summaryCell.textContent = aggResults.join(", ");
+    }
+};
 
 class AggregationCoordinator {
     table: HTMLTableElement;
@@ -145,20 +224,20 @@ class AggregationCoordinator {
     }
 
     collapseTable() {
+        console.log("collapsing table...")
         const rows = Array.from(this.table.querySelectorAll("tbody tr")) as HTMLTableRowElement[];
-        // Fix: use "th" not "td" for header cells
         const columnReverseMap = new Map(
             Array.from(this.table.querySelectorAll("thead th")).map((th, idx) => [th.textContent?.trim() ?? "", idx])
         );
-        const groupIdGenerator = getGroupIdGenerator(this.groups, columnReverseMap);
+        const getGroupId = getGroupIdGenerator(this.groups, columnReverseMap);
 
         // Group rows by the groupId
         const groupedRows = rows.reduce((acc, row) => {
             const cells = row.querySelectorAll("td");
-            const cellValues = Array.from(cells).map(td => td.textContent?.trim() ?? "");
-            const groupId = groupIdGenerator(cellValues);
+            const allCellValues = Array.from(cells).map(td => td.textContent?.trim() ?? "");
+            const { groupId, distinctCellValues } = getGroupId(allCellValues);
 
-            acc[groupId] = acc[groupId] || { cellValues, rows: [] };
+            acc[groupId] = acc[groupId] || { cellValues: distinctCellValues, rows: [] };
             acc[groupId].rows.push(row);
             return acc;
         }, {} as {
@@ -168,86 +247,57 @@ class AggregationCoordinator {
             }
         });
 
+        console.log("Grouped Rows:", groupedRows);
+
         // construct a new table with grouped rows and aggregation results.
         const columns = [
             ...this.groups,
             ...Object.keys(this.aggregations)
         ]
+
         const newTable = getBlankTable();
         populateHeaders(newTable, columns);
-
         Object.values(groupedRows).forEach(({ cellValues: staticCellValues, rows }) => {
-            const newRow = document.createElement("tr");
-            const cellValues = [
-                ...staticCellValues,
-                // placeholder for aggregation results
-            ]
+            addBlankRow(newTable);
+            const newRow = newTable.querySelector("tbody tr:last-child")! as HTMLTableRowElement;
 
-            cellValues.forEach((value) => {
-                const td = document.createElement("td");
-                td.textContent = String(value);
-                newRow.appendChild(td);
+            // add static cell values (first few)
+            staticCellValues.forEach((val, idx) => {
+                const cell = newRow.querySelectorAll("td")[idx];
+                if (cell) {
+                    cell.textContent = String(val);
+                }
+            });
+
+            // add aggregated cell values (remaining)
+            Object.keys(this.aggregations).forEach((column, colIndexOffset) => {
+                populateCell(newRow, { name: column, index: staticCellValues.length + colIndexOffset }, rows, this.aggregations);
             });
         });
 
+        // The new table is now fully constructed, replace the old table in the DOM
         this.table.replaceWith(newTable);
     }
 
     appendSummaryRow() {
         const columns = Array.from(this.table.querySelectorAll("thead th")).map(th => th.textContent?.trim() ?? "");
-        const rows = Array.from(this.table.querySelectorAll("tbody tr"));
+        const rows = Array.from(this.table.querySelectorAll("tbody tr")) as HTMLTableRowElement[];
 
         // Start by adding the summary row to the bottom
-        const tbody = this.table.querySelector("tbody");
-        const summaryRow = document.createElement("tr");
-        columns.forEach(() => {
-            summaryRow.appendChild(document.createElement("td"));
-        });
-        tbody?.appendChild(summaryRow);
+        addBlankRow(this.table);
 
+        // populate the row
+        const summaryRow = this.table.querySelector("tbody tr:last-child")! as HTMLTableRowElement;
         columns.forEach((column, colIdx) => {
-            const aggregatorEnums = this.aggregations[column];
-            if (!aggregatorEnums || aggregatorEnums.length === 0) return;
-
-            // Gather values for this column
-            const values = rows.map(row => {
-                const cell = row.querySelectorAll("td")[colIdx];
-                if (!cell) return "";
-                const val = cell.textContent?.trim() ?? "";
-                return isNaN(Number(val)) || val === "" ? val : Number(val);
-            });
-
-            // Apply all aggregation handlers and format output
-            const aggResults = aggregatorEnums.map((aggregatorEnum: AggregatorEnum) => {
-                let aggResult: CellValue;
-                if (aggregatorEnum === AggregatorEnum.FIRST) {
-                    aggResult = AGGREGATION_SIGNATURE_MAP[aggregatorEnum].handler(values);
-                } else {
-                    aggResult = AGGREGATION_SIGNATURE_MAP[aggregatorEnum].handler(values as number[]);
-                }
-
-                let stringifiedResult: string;
-                if (typeof aggResult === "number") {
-                    stringifiedResult = aggResult.toFixed(DEFAULT_DECIMAL_PLACES);
-                    if (stringifiedResult.endsWith(".00")) {
-                        stringifiedResult = stringifiedResult.slice(0, -3);
-                    }
-                } else {
-                    stringifiedResult = String(aggResult);
-                }
-
-                return `${AGGREGATION_SIGNATURE_MAP[aggregatorEnum].label}: ${stringifiedResult}`;
-            });
-
-            // Output the resulting values by joining with commas
-            const summaryCell = summaryRow.querySelectorAll("td")[colIdx];
-            if (summaryCell) {
-                summaryCell.textContent = aggResults.join(", ");
-            }
+            populateCell(summaryRow, { name: column, index: colIdx }, rows, this.aggregations);
         });
     }
 
     aggregate() {
+        if (Object.keys(this.aggregations).length === 0) {
+            return;
+        }
+
         if (this.groups.length > 0) {
             this.collapseTable();
         } else {
@@ -259,4 +309,9 @@ class AggregationCoordinator {
 export const aggregateTable = (table: HTMLTableElement, text: string) => {
     const coordinator = new AggregationCoordinator(table, text);
     coordinator.aggregate();
+
+    return {
+        canAggregate: Object.keys(coordinator.aggregations).length > 0,
+        aggregate: () => coordinator.aggregate()
+    }
 };
