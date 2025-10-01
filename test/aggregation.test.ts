@@ -35,14 +35,18 @@ describe("aggregateTable", () => {
       PIVOTIFYJS_SUM:["Annual Cost"]
       PIVOTIFYJS_AVERAGE:["Annual Cost"]
     `;
+        const rowCountBefore = table.querySelectorAll("tbody tr").length;
         aggregateTable(table, text);
+        const rowCountAfter = table.querySelectorAll("tbody tr").length;
+
+        expect(rowCountAfter).toBe(rowCountBefore + 1); // One additional summary row
 
         const headers = Array.from(table.querySelectorAll("thead th")).map(th => th.textContent?.trim());
         const annualCostIdx = headers.indexOf("Annual Cost");
         expect(annualCostIdx).toBeGreaterThan(-1);
 
         const rows = Array.from(table.querySelectorAll("tbody tr"));
-        const summaryRow = rows[rows.length - 1];
+        const summaryRow = rows[rows.length - 1]!;
         const summaryCell = summaryRow.querySelectorAll("td")[annualCostIdx];
 
         expect(summaryCell).toBeDefined();

@@ -3,14 +3,14 @@
   "version": "0.0.3",
   "type": "module",
   "description": "Spreadsheet-like pivot table features for HTML tables.",
-  "main": "src/pivotify.ts",
+  "main": "src/pivotifyjs.ts",
   "repository": {
     "type": "git",
     "url": "https://github.com/jaeseopark/pivotifyjs"
   },
   "scripts": {
     "test": "node --experimental-vm-modules $(which jest)",
-    "build": "esbuild src/pivotify.ts --bundle --minify --outfile=dist/pivotify.min.js"
+    "build": "esbuild src/pivotifyjs.ts --bundle --minify --outfile=dist/pivotifyjs.min.js"
   },
   "author": "",
   "license": "MIT",

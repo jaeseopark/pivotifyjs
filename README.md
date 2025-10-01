@@ -8,7 +8,7 @@
 
 1. Include the script
   ```html
-  <script src="https://cdn.jsdelivr.net/npm/pivotifyjs/dist/pivotify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pivotifyjs/dist/pivotifyjs.min.js"></script>
   ```
 
 1. Add a keyword block below your table
