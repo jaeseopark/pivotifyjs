@@ -1,18 +1,7 @@
-import { aggregateTable, getAggregations } from "@/utils/aggregation";
-import fs from "fs";
-import { fileURLToPath } from "url";
-import path from "path";
+import { aggregate, getAggregateInstructions } from "@/aggregation";
 import { processAllTables } from "@/pivotifyjs";
+import { loadHtml, loadTableFromHtml } from "./testUtils";
 
-function loadTableFromHtml(htmlFile = "subscriptions.simple.html") {
-    const htmlPath = path.resolve(
-        fileURLToPath(import.meta.url),
-        `../../test/data/${htmlFile}`
-    );
-    const html = fs.readFileSync(htmlPath, "utf8");
-    document.body.innerHTML = html;
-    return document.querySelector("table") as HTMLTableElement;
-}
 
 describe("getAggregations", () => {
     it("parses aggregation keywords and columns from text", () => {
@@ -21,23 +10,27 @@ describe("getAggregations", () => {
             PIVOTIFYJS_AVERAGE:["Annual Cost"]
             PIVOTIFYJS_MIN:    ["Qty"]
         `;
-        const result = getAggregations(text);
+        const result = getAggregateInstructions(text);
 
-        expect(result.aggregations["Annual Cost"]).toEqual(["PIVOTIFYJS_SUM", "PIVOTIFYJS_AVERAGE"]);
-        expect(result.aggregations["Unit Cost"]).toEqual(["PIVOTIFYJS_SUM"]);
-        expect(result.aggregations["Qty"]).toEqual(["PIVOTIFYJS_SUM", "PIVOTIFYJS_MIN"]);
+        expect(result).toHaveLength(5);
+        expect(result).toContainEqual({ aggregator: "PIVOTIFYJS_SUM", column: "Annual Cost" });
+        expect(result).toContainEqual({ aggregator: "PIVOTIFYJS_SUM", column: "Unit Cost" });
+        expect(result).toContainEqual({ aggregator: "PIVOTIFYJS_SUM", column: "Qty" });
+        expect(result).toContainEqual({ aggregator: "PIVOTIFYJS_AVERAGE", column: "Annual Cost" });
+        expect(result).toContainEqual({ aggregator: "PIVOTIFYJS_MIN", column: "Qty" });
     });
 });
 
 describe("aggregateTable", () => {
     it("adds summary row with average and sum when no groups are specified", () => {
-        const table = loadTableFromHtml();
-        const text = `
-      PIVOTIFYJS_SUM:["Annual Cost"]
-      PIVOTIFYJS_AVERAGE:["Annual Cost"]
-    `;
+        const table = loadTableFromHtml("subscriptions.simple.html");
         const rowCountBefore = table.querySelectorAll("tbody tr").length;
-        aggregateTable(table, text);
+
+        aggregate(table, [], getAggregateInstructions(`
+            PIVOTIFYJS_SUM:["Annual Cost"]
+            PIVOTIFYJS_AVERAGE:["Annual Cost"]
+        `));
+        
         const rowCountAfter = table.querySelectorAll("tbody tr").length;
 
         expect(rowCountAfter).toBe(rowCountBefore + 1); // One additional summary row
@@ -58,11 +51,26 @@ describe("aggregateTable", () => {
 
 describe("aggregateTable with groups", () => {
     it("adds subtotal rows for each group and a grand total row", () => {
-        const table = loadTableFromHtml("subscriptions.complex.html");
-        window.document = table.ownerDocument as Document;
+        loadHtml("subscriptions.complex.html");
+
+        const table = document.querySelector("table")!;
+        expect(table).toBeDefined();
+
+        const p = document.createElement("p");
+        p.innerHTML = `
+            PIVOTIFYJS_GROUPS:["Last Checked"]<br>
+            PIVOTIFYJS_SUM:["Annual Cost"]<br>
+            PIVOTIFYJS_AVERAGE:["Annual Cost"]
+        `;
+        table.parentNode?.insertBefore(p, table.nextSibling);
+
+        const rowCountBefore = document.querySelectorAll("tbody tr").length;
+        expect(rowCountBefore).toBe(9);
+
         processAllTables();
 
-        const rowCount = table.querySelectorAll("tbody tr").length;
-        expect(rowCount).toBe(3);
+        const rowCountAfter = document.querySelectorAll("tbody tr").length;
+        // There are 3 groups, so we expect to see 3 rows after transformation.
+        expect(rowCountAfter).toEqual(3);
     });
 });

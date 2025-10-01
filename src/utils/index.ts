@@ -1,2 +1,2 @@
-export * from "./computation";
-export * from "./aggregation";
+export * from "./strings";
+export * from "./tables";

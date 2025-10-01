@@ -10,7 +10,7 @@
   },
   "scripts": {
     "test": "node --experimental-vm-modules $(which jest)",
-    "build": "esbuild src/pivotifyjs.ts --bundle --minify --outfile=dist/pivotifyjs.min.js"
+    "build": "esbuild src/pivotifyjs.ts --bundle --minify --outfile=dist/pivotifyjs.min.js --drop:console"
   },
   "author": "",
   "license": "MIT",

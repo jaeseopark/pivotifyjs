@@ -1,6 +1,7 @@
 import {
     COMPUTE_KEYWORD
-} from "@/constants.js";
+} from "@/constants";
+import { ComputeInstruction } from "./types";
 
 /**
  * Parses PIVOTIFYJS_COMPUTE lines. Only 1 computed field allowed per line, separated by <br> tags or by newlines.
@@ -8,11 +9,7 @@ import {
  * @param {string} text
  * @returns {Array<{column:string, equation:string, variables:Array<{column:string, default:string|number}>}>}
  */
-export const getComputations = (text: string): {
-    column: string;
-    equation: string;
-    variables: { column: string; default: string }[];
-}[] => {
+export const getComputeInstructions = (text: string): ComputeInstruction[] => {
     // Support both <br> and newline as line separators (Windows compatible)
     const lines = text.split(/<br>|\r?\n/).filter(line => line.trim().startsWith(COMPUTE_KEYWORD));
     return lines
@@ -47,11 +44,8 @@ export const getComputations = (text: string): {
  *
  * @param {HTMLTableElement} table - The source table element.
  */
-export const appendComputedColumns = (table: HTMLTableElement, text: string) => {
-    // Use getComputations to parse computation objects
-    const computations = getComputations(text);
-
-    const compute = () => computations.forEach(comp => {
+export const appendComputedColumns = (table: HTMLTableElement, instructions: ComputeInstruction[]) => {
+    instructions.forEach(comp => {
         // Note headers need to be re-fetched for each computation in case multiple computations are chained.
         const thead = table.querySelector("thead");
         const theadCells = thead!.querySelectorAll("th"); // assume only one thead row in a table.
@@ -98,9 +92,4 @@ export const appendComputedColumns = (table: HTMLTableElement, text: string) => 
             tr.appendChild(td);
         });
     });
-
-    return {
-        canCompute: computations.length > 0,
-        compute
-    }
 };

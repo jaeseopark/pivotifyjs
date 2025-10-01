@@ -1,17 +1,6 @@
-import { getComputations, appendComputedColumns } from "@/utils/computation";
-import fs from "fs";
-import { fileURLToPath } from "url";
-import path from "path";
+import { getComputeInstructions, appendComputedColumns } from "@/computation";
+import { loadTableFromHtml } from "./testUtils";
 
-function loadTableFromHtml(htmlFile = "subscriptions.simple.html") {
-  const htmlPath = path.resolve(
-    fileURLToPath(import.meta.url),
-    `../../test/data/${htmlFile}`
-  );
-  const html = fs.readFileSync(htmlPath, "utf8");
-  document.body.innerHTML = html;
-  return document.querySelector("table") as HTMLTableElement;
-}
 
 describe("getComputations", () => {
   it.each([
@@ -38,16 +27,20 @@ describe("getComputations", () => {
       }
     ]
   ])("parses compute line: %s", (computeText, expected) => {
-    const computations = getComputations(computeText);
+    const computations = getComputeInstructions(computeText);
     expect(computations).toHaveLength(1);
     expect(computations[0]).toEqual(expected);
   });
 
   it("compute numeric values (from subscriptions.simple.html)", () => {
-    const computeText = 'PIVOTIFYJS_COMPUTE:"CostLastChecked"= ${Annual Cost} + ${Last Checked}';
-    const table = loadTableFromHtml();
+    const table = loadTableFromHtml("subscriptions.simple.html");
     const columnCounterBefore = table.querySelectorAll("th").length;
-    appendComputedColumns(table, computeText);
+
+    appendComputedColumns(
+      table,
+      getComputeInstructions('PIVOTIFYJS_COMPUTE:"CostLastChecked"= ${Annual Cost} + ${Last Checked}')
+    );
+
     const columnCounterAfter = table.querySelectorAll("th").length;
 
     expect(columnCounterAfter).toBe(columnCounterBefore + 1);
