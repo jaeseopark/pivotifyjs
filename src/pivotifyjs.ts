@@ -89,11 +89,8 @@ export function processAllTables() {
 
         const processedTable = processTable(table, p);
         if (processedTable) {
-            console.debug("Replacing table after processing...")
             table.replaceWith(processedTable);
             p.remove();
-        } else {
-            console.debug("No instructions found. No replacement needed.")
         }
     });
 }

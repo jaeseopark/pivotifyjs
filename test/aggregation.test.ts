@@ -30,7 +30,7 @@ describe("aggregateTable", () => {
             PIVOTIFYJS_SUM:["Annual Cost"]
             PIVOTIFYJS_AVERAGE:["Annual Cost"]
         `));
-        
+
         const rowCountAfter = table.querySelectorAll("tbody tr").length;
 
         expect(rowCountAfter).toBe(rowCountBefore + 1); // One additional summary row
@@ -62,7 +62,14 @@ describe("aggregateTable with groups", () => {
             PIVOTIFYJS_SUM:["Annual Cost"]<br>
             PIVOTIFYJS_AVERAGE:["Annual Cost"]
         `;
-        table.parentNode?.insertBefore(p, table.nextSibling);
+
+        const parent = table.parentElement?.appendChild(p);
+        if (parent?.nextSibling) {
+            parent?.parentElement?.insertBefore(p, parent.nextSibling
+            )
+        } else {
+            parent?.parentElement?.appendChild(p);
+        }
 
         const rowCountBefore = document.querySelectorAll("tbody tr").length;
         expect(rowCountBefore).toBe(9);
@@ -72,5 +79,7 @@ describe("aggregateTable with groups", () => {
         const rowCountAfter = document.querySelectorAll("tbody tr").length;
         // There are 3 groups, so we expect to see 3 rows after transformation.
         expect(rowCountAfter).toEqual(3);
+
+        console.debug(document.body.innerHTML);
     });
 });
