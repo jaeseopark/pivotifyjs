@@ -1,37 +1,40 @@
 import {
-    SUM_KEYWORD,
-    AVG_KEYWORD,
-    MIN_KEYWORD,
-    MAX_KEYWORD,
-    MEDIAN_KEYWORD,
-    FIRST_KEYWORD,
+    AggregatorEnum,
 } from "@/constants.js";
 
 type CellValue = string | number;
 
-type AggregationSignature = {
-    handler: ((values: CellValue[]) => CellValue) | ((values: number[]) => number);
-    label: string; // what gets output in the individual cells
-};
+// TODO: be able to customize this.
+const DEFAULT_DECIMAL_PLACES = 2;
 
-const AGGREGATION_SIGNATURE_MAP: { [keyword: string]: AggregationSignature } = {
-    [SUM_KEYWORD]: {
+const AGGREGATION_SIGNATURE_MAP: {
+    [key in Exclude<AggregatorEnum, AggregatorEnum.FIRST>]: {
+        handler: (values: number[]) => number;
+        label: string;
+    };
+} & {
+    [AggregatorEnum.FIRST]: {
+        handler: (values: CellValue[]) => CellValue;
+        label: string;
+    };
+} = {
+    [AggregatorEnum.SUM]: {
         handler: (values: number[]) => values.reduce((a, b) => a + b, 0),
         label: "Sum"
     },
-    [AVG_KEYWORD]: {
+    [AggregatorEnum.AVERAGE]: {
         handler: (values: number[]) => values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0,
         label: "Avg"
     },
-    [MIN_KEYWORD]: {
+    [AggregatorEnum.MIN]: {
         handler: (values: number[]) => Math.min(...values),
         label: "Min"
     },
-    [MAX_KEYWORD]: {
+    [AggregatorEnum.MAX]: {
         handler: (values: number[]) => Math.max(...values),
         label: "Max"
     },
-    [MEDIAN_KEYWORD]: {
+    [AggregatorEnum.MEDIAN]: {
         handler: (values: number[]) => {
             if (values.length === 0) return 0;
             const sorted = [...values].sort((a, b) => a - b);
@@ -42,7 +45,7 @@ const AGGREGATION_SIGNATURE_MAP: { [keyword: string]: AggregationSignature } = {
         },
         label: "Median"
     },
-    [FIRST_KEYWORD]: {
+    [AggregatorEnum.FIRST]: {
         handler: (values: CellValue[]) => {
             return values[0] ?? "";
         },
@@ -51,35 +54,58 @@ const AGGREGATION_SIGNATURE_MAP: { [keyword: string]: AggregationSignature } = {
 };
 
 function getColumns(text: string, keyword: string): string[] {
-    const match = text.match(new RegExp(`${keyword}:\\s*(\\[[^\\]]*\\])`));
+    const match = text.match(new RegExp(`\\s*${keyword}:\\s*(\\[[^\\]]*\\])`));
     return match ? JSON.parse(match[1]!) : [];
 }
 
 function getGroups(text: string) {
-    const match = text.match(/PIVOTIFYJS_GROUPS:\s*(\[[^\]]*\])/);
+    const match = text.match(/\s*PIVOTIFYJS_GROUPS:\s*(\[[^\]]*\])/);
     return match ? JSON.parse(match[1]!) : [];
 }
 
-const getAggregations = (text: string): { [column: string]: AggregationSignature[] } => {
-    return Object.entries(AGGREGATION_SIGNATURE_MAP).reduce((acc, [keyword, agg]) => {
-        const cols = getColumns(text, keyword);
+type GetAggregationsReturnType = {
+    aggregations: { [column: string]: AggregatorEnum[] },
+    uniqueAggregatorEnums: Set<AggregatorEnum>
+}
+
+export const getAggregations = (text: string): GetAggregationsReturnType => {
+    return Object.values(AggregatorEnum).reduce((acc, aggregatorEnum) => {
+        const cols = getColumns(text, aggregatorEnum);
+
         cols.forEach(col => {
-            acc[col] = acc[col] || [];
-            acc[col].push(agg);
+            acc.aggregations[col] = acc.aggregations[col] || [];
+            acc.aggregations[col].push(aggregatorEnum);
+
+            acc.uniqueAggregatorEnums.add(aggregatorEnum);
         });
+
         return acc;
-    }, {} as { [column: string]: AggregationSignature[] });
+    }, {
+        aggregations: {},
+        uniqueAggregatorEnums: new Set()
+    } as GetAggregationsReturnType);
 };
 
 class AggregationCoordinator {
     table: HTMLTableElement;
+    /**
+     * Array of column names to group by
+     */
     groups: string[];
-    aggregations: ReturnType<typeof getAggregations>;
+    /**
+     * Keyed by column name, value is array of aggregation signatures to apply
+     */
+    aggregations: ReturnType<typeof getAggregations>["aggregations"];
 
     constructor(table: HTMLTableElement, text: string) {
         this.table = table;
         this.groups = getGroups(text);
-        this.aggregations = getAggregations(text);
+        const { aggregations, uniqueAggregatorEnums } = getAggregations(text);
+        this.aggregations = aggregations;
+
+        if (this.groups.length === 0 && uniqueAggregatorEnums.has(AggregatorEnum.FIRST)) {
+            throw new Error("Aggregator 'FIRST' can only be used when grouping is enabled.");
+        }
     }
 
     collapseTable() {
@@ -87,20 +113,20 @@ class AggregationCoordinator {
     }
 
     appendSummaryRow() {
-        const headers = Array.from(this.table.querySelectorAll("thead th")).map(th => th.textContent?.trim() ?? "");
+        const columns = Array.from(this.table.querySelectorAll("thead th")).map(th => th.textContent?.trim() ?? "");
         const rows = Array.from(this.table.querySelectorAll("tbody tr"));
 
         // Start by adding the summary row to the bottom
         const tbody = this.table.querySelector("tbody");
         const summaryRow = document.createElement("tr");
-        headers.forEach(() => {
+        columns.forEach(() => {
             summaryRow.appendChild(document.createElement("td"));
         });
         tbody?.appendChild(summaryRow);
 
-        headers.forEach((header, colIdx) => {
-            const aggSignatures = this.aggregations[header];
-            if (!aggSignatures || aggSignatures.length === 0) return;
+        columns.forEach((column, colIdx) => {
+            const aggregatorEnums = this.aggregations[column];
+            if (!aggregatorEnums || aggregatorEnums.length === 0) return;
 
             // Gather values for this column
             const values = rows.map(row => {
@@ -111,9 +137,28 @@ class AggregationCoordinator {
             });
 
             // Apply all aggregation handlers and format output
-            const aggResults = aggSignatures.map(signature => {
-                const value = signature.handler(values as any);
-                return `${signature.label}: ${value}`;
+            const aggResults = aggregatorEnums.map((aggregatorEnum: AggregatorEnum) => {
+                let aggResult: CellValue;
+                if (aggregatorEnum === AggregatorEnum.FIRST) {
+                    // This is a special case where 'values' can be of mixed types.
+                    aggResult = AGGREGATION_SIGNATURE_MAP[aggregatorEnum].handler(values);
+                } else {
+                    // rest of aggregations expect numeric values
+                    aggResult = AGGREGATION_SIGNATURE_MAP[aggregatorEnum].handler(values as number[]);
+                }
+
+                let stringifiedResult: string;
+                if (typeof aggResult === "number") {
+                    stringifiedResult = aggResult.toFixed(DEFAULT_DECIMAL_PLACES);
+                    // Drop the decimal places if not needed
+                    if (stringifiedResult.endsWith(".00")) {
+                        stringifiedResult = stringifiedResult.slice(0, -3);
+                    }
+                } else {
+                    stringifiedResult = String(aggResult);
+                }
+
+                return `${AGGREGATION_SIGNATURE_MAP[aggregatorEnum].label}: ${stringifiedResult}`;
             });
 
             // Output the resulting values by joining with commas
@@ -122,13 +167,14 @@ class AggregationCoordinator {
                 summaryCell.textContent = aggResults.join(", ");
             }
         });
-    }
+    };
 
     aggregate() {
         if (this.groups.length > 0) {
             this.collapseTable();
+        } else {
+            this.appendSummaryRow();
         }
-        this.appendSummaryRow();
     }
 }
 
