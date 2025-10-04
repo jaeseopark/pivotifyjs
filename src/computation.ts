@@ -1,7 +1,9 @@
 import {
     COMPUTE_KEYWORD
 } from "@/constants";
-import { ComputeInstruction } from "./types";
+import { ComputeInstruction } from "@/types";
+
+// Note this file uses raw HTML processing. TODO: use the TableData model instead.
 
 /**
  * Parses PIVOTIFYJS_COMPUTE lines. Only 1 computed field allowed per line, separated by <br> tags or by newlines.

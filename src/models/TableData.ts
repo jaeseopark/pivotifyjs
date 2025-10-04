@@ -94,9 +94,12 @@ export class TableData {
         // TODO implement
     }
 
-    getInnerHtml(): string {
+    getHtmlTableElement(): HTMLTableElement {
         const thead = `<thead><tr>${Object.keys(this.columns).map(col => `<th>${col}</th>`).join("")}</tr></thead>`;
         const tbody = `<tbody>${this.rows.map(row => `<tr>${row.map(cell => `<td>${cell.getValue()}</td>`).join("")}</tr>`).join("")}</tbody>`;
-        return `${thead}${tbody}`;
+
+        const table = document.createElement("table");
+        table.innerHTML = thead + tbody;
+        return table;
     }
 }
