@@ -4,7 +4,6 @@ import { TableData, ExtendedCellValue } from "@/models/TableData";
 import { AggregatorEnum, CellValue } from "@/types";
 
 
-
 type GetPivotIdReturnType = (allCellValues: CellValue[]) => {
     pivotId: string,
     distinctCellValues: CellValue[]

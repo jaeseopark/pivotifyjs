@@ -56,16 +56,24 @@ export class TableData {
                     return acc;
                 }, {} as { [name: string]: number });
 
-            this.rows = Array.from(table.querySelectorAll("tbody tr")).map(row =>
+            this.rows = Array.from(table.querySelectorAll("tbody tr")).map((row, rowIdx) =>
                 Array.from(row.querySelectorAll("td")).map((td, colIdx, arr) => {
                     // Provide a substitute function for variable references
-                    return new ExtendedCellValue(td.textContent?.trim() ?? "", () => {
-                        let val = td.textContent?.trim() ?? "";
-                        val = val.replace(/\$\{([^}]+)\}/g, (_, varName) => {
-                            const idx = this.columns[varName.trim()];
-                            return idx !== undefined ? arr[idx].getValue() : "";
-                        });
-                        return val;
+                    return new ExtendedCellValue({
+                        unresolvedValue: td.textContent?.trim() ?? "",
+                        substitute: () => {
+                            let val = td.textContent?.trim() ?? "";
+                            val = val.replace(/\$\{([^}]+)\}/g, (_, columnName) => {
+                                const colIdx = this.columns[columnName.trim()]!;
+                                if (colIdx === undefined) {
+                                    console.debug(`Column '${columnName}' not found for substitution.`);
+                                    return "";
+                                }
+
+                                return String(this.getValue({ cell: this.getCell({ rowIdx, col: colIdx }) }));
+                            });
+                            return val;
+                        }
                     });
                 })
             );
@@ -87,7 +95,7 @@ export class TableData {
     }
 
     clone(): TableData {
-        // TODO implement
+        return new TableData(this.getHtmlTableElement());
     }
 
     createSummaryRow(instructions: AggregateInstruction[]) {

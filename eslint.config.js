@@ -13,6 +13,8 @@ export default [
     plugins: {
       "@typescript-eslint": tseslint
     },
-    rules: {}
+    rules: {
+      "no-multiple-empty-lines": ["warn", { "max": 2 }]
+    }
   }
 ];

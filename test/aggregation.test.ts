@@ -1,6 +1,6 @@
 import { aggregate, getAggregateInstructions } from "@/aggregation";
 import { processAllTables } from "@/pivotifyjs";
-import { loadHtml, loadTableFromHtml, normalizeHtml } from "./testUtils";
+import { loadTableFromHtml, normalizeHtml } from "./testUtils";
 
 
 describe("getAggregations", () => {
