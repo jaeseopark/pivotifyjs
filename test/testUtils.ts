@@ -17,3 +17,7 @@ export function loadTableFromHtml(htmlFile: string) {
     loadHtml(htmlFile);
     return document.querySelector("table") as HTMLTableElement;
 }
+
+export function normalizeHtml(html: string): string {
+  return html.replace(/\s+/g, " ").replace(/>\s+</g, "><").trim();
+}

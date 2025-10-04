@@ -1,11 +1,11 @@
 import { getComputeInstructions, appendComputedColumns } from "@/computation";
-import { loadTableFromHtml } from "./testUtils";
+import { loadTableFromHtml, normalizeHtml } from "./testUtils";
 
 
 describe("getComputations", () => {
   it.each([
     [
-      `PIVOTIFYJS_COMPUTE:"Subtotal"=\${Unit Cost} * \${Qty}`,
+      `PIVOTIFYJS_COMPUTE:"Subtotal"="\${Unit Cost} * \${Qty}"`,
       {
         column: "Subtotal",
         equation: "${Unit Cost} * ${Qty}",
@@ -16,7 +16,7 @@ describe("getComputations", () => {
       }
     ],
     [
-      `PIVOTIFYJS_COMPUTE:"Subtotal"=\${Unit Cost} * \${Qty:1}`,
+      `PIVOTIFYJS_COMPUTE:"Subtotal"="\${Unit Cost} * \${Qty:1}"`,
       {
         column: "Subtotal",
         equation: "${Unit Cost} * ${Qty}",
@@ -38,7 +38,7 @@ describe("getComputations", () => {
 
     appendComputedColumns(
       table,
-      getComputeInstructions('PIVOTIFYJS_COMPUTE:"CostLastChecked"= ${Annual Cost} + ${Last Checked}')
+      getComputeInstructions('PIVOTIFYJS_COMPUTE:"CostLastChecked"="${Annual Cost} + ${Last Checked}"')
     );
 
     const columnCounterAfter = table.querySelectorAll("th").length;
@@ -66,6 +66,18 @@ describe("getComputations", () => {
       const actual = Number(newCellValue.textContent?.trim());
       expect(actual).toBe(expected);
     });
+  });
+
+  it("calculates Subtotal by multiplying Unit Cost and Qty (from materials.complex.html)", () => {
+    const table = loadTableFromHtml("materials.complex.html");
+    const expectedTable = loadTableFromHtml("materials.expected.subtotal.html");
+
+    appendComputedColumns(
+      table,
+      getComputeInstructions('PIVOTIFYJS_COMPUTE:"Subtotal"="${Unit Cost} * ${Qty}"')
+    );
+
+    expect(normalizeHtml(table.outerHTML)).toBe(normalizeHtml(expectedTable.outerHTML));
   });
 
   // TODO: test case for multiple computed fields

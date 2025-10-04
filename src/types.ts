@@ -23,3 +23,5 @@ export type AggregateInstructionsWithGroups = {
     groups: string[],
     aggregateInstructions: AggregateInstruction[];
 }
+
+export type CellValue = string | number;

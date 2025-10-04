@@ -1,7 +1,7 @@
 import { AggregateInstruction, AggregatorEnum, ComputeInstruction } from "@/types";
 import { aggregate, getAggregateInstructions } from "@/aggregation";
 import { appendComputedColumns, getComputeInstructions } from "@/computation";
-import { getPivotingGroups } from "./utils";
+import { getPivotingGroups } from "@/utils";
 
 class PivotifyJS {
     table: HTMLTableElement;
@@ -22,6 +22,11 @@ class PivotifyJS {
         };
     }
 
+    sanitizeTable() {
+        // TODO: expand colspan/rowspan attributes so that column and row references work correctly.
+        // TODO other sanitization logic go here...
+    }
+
     compute(computeInstructions: ComputeInstruction[]) {
         if (computeInstructions.length === 0) {
             return;
@@ -38,7 +43,7 @@ class PivotifyJS {
         const uniqueAggregators = new Set(aggregateInstructions.map(instr => instr.aggregator));
 
         if (pivotingGroups.length === 0 && uniqueAggregators.has(AggregatorEnum.FIRST)) {
-            throw new Error("PIVOTIFYJS_GROUPS must be specified when using PIVOTIFYJS_FIRST.");
+            throw new Error("PIVOTIFYJS_FIRST cannot be used without a PIVOTIFYJS_GROUPS clause.");
         }
 
         aggregate(this.table, pivotingGroups, aggregateInstructions);
@@ -64,6 +69,7 @@ const processTable = (table: HTMLTableElement, p: HTMLParagraphElement): HTMLTab
         return undefined;
     }
 
+    pivotifyJs.sanitizeTable();
     pivotifyJs.compute(computeInstructions);
     pivotifyJs.aggregate(pivotingGroups, aggregateInstructions);
 
@@ -89,7 +95,7 @@ export function processAllTables() {
 
         const processedTable = processTable(table, p);
         if (processedTable) {
-            table.replaceWith(processedTable);
+            table.innerHTML = processedTable.innerHTML;
             p.remove();
         }
     });

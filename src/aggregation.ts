@@ -1,67 +1,24 @@
 import {
     AggregateInstruction,
     AggregatorEnum,
+    CellValue
 } from "@/types";
-import { addBlankRow, getAggregatedColumns, getBlankTable, populateHeaders } from "@/utils";
-
-type CellValue = string | number;
+import { getAggregatedColumns } from "@/utils";
+import { ExtendedCellValue, TableData } from "@/models/TableData";
+import { AGGREGATION_SIGNATURE_MAP } from "@/declarations";
 
 // TODO: be able to customize this.
 const DEFAULT_DECIMAL_PLACES = 2;
-
-const AGGREGATION_SIGNATURE_MAP: {
-    [key in Exclude<AggregatorEnum, AggregatorEnum.FIRST>]: {
-        handler: (values: number[]) => number;
-        label: string;
-    };
-} & {
-    [AggregatorEnum.FIRST]: {
-        handler: (values: CellValue[]) => CellValue;
-        label: string;
-    };
-} = {
-    [AggregatorEnum.SUM]: {
-        handler: (values: number[]) => values.reduce((a, b) => a + b, 0),
-        label: "Sum"
-    },
-    [AggregatorEnum.AVERAGE]: {
-        handler: (values: number[]) => values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0,
-        label: "Avg"
-    },
-    [AggregatorEnum.MIN]: {
-        handler: (values: number[]) => Math.min(...values),
-        label: "Min"
-    },
-    [AggregatorEnum.MAX]: {
-        handler: (values: number[]) => Math.max(...values),
-        label: "Max"
-    },
-    [AggregatorEnum.MEDIAN]: {
-        handler: (values: number[]) => {
-            if (values.length === 0) return 0;
-            const sorted = [...values].sort((a, b) => a - b);
-            const mid = Math.floor(sorted.length / 2);
-            return sorted.slice(mid)[0] as number;
-        },
-        label: "Median"
-    },
-    [AggregatorEnum.FIRST]: {
-        handler: (values: CellValue[]) => {
-            return values[0] ?? "";
-        },
-        label: "First"
-    }
-};
 
 type GetPivotIdReturnType = (allCellValues: CellValue[]) => {
     pivotId: string,
     distinctCellValues: CellValue[]
 };
 
-const getPivotIdGenerator = (pivots: string[], columnReverseMap: Map<string, number>): GetPivotIdReturnType => {
+const getPivotIdGenerator = (pivots: string[], columnReverseMap: { [column: string]: number }): GetPivotIdReturnType => {
     return (allCellValues: CellValue[]) => {
         const distinctCellValues = pivots.map(pivot => {
-            const colIdx = columnReverseMap.get(pivot);
+            const colIdx = columnReverseMap[pivot];
             if (colIdx === undefined) {
                 return "";
             }
@@ -120,110 +77,81 @@ const getAggregatedCellValue = (aggregatorEnum: AggregatorEnum, values: CellValu
     return `${AGGREGATION_SIGNATURE_MAP[aggregatorEnum].label}: ${stringifiedResult}`;
 }
 
-const populateCell = (row: HTMLTableRowElement, column: { name: string, index: number }, rows: HTMLTableRowElement[], aggregations: {
-    [column: string]: AggregatorEnum[]
-}) => {
-    const values = rows.map(row => {
-        const cell = row.querySelectorAll("td")[column.index];
-        if (!cell) return "";
-        const val = cell.textContent?.trim() ?? "";
-        return isNaN(Number(val)) || val === "" ? val : Number(val);
-    });
-
-    const aggregatorEnums = aggregations[column.name];
+const populateCell = (row: HTMLTableRowElement, values: CellValue[], aggregatorEnums: AggregatorEnum[], targetColIdx: number) => {
     if (!aggregatorEnums || aggregatorEnums.length === 0) return;
 
     // Apply all aggregation handlers and format output
     const aggResults = aggregatorEnums.map(aggregatorEnum => getAggregatedCellValue(aggregatorEnum, values));
 
     // Output the resulting values by joining with commas
-    const summaryCell = row.querySelectorAll("td")[column.index];
+    const summaryCell = row.querySelectorAll("td")[targetColIdx];
     if (summaryCell) {
         summaryCell.textContent = aggResults.join(", ");
-        console.debug(`Populated row["${column.name}"] with: ${summaryCell.textContent}`);
     }
 };
 
 class AggregationCoordinator {
     table: HTMLTableElement;
     aggregations: ReturnType<typeof groupInstructionsByColumn>;
+    summaryInstructions: number[] = []; // TODO implement
     groups: string[];
+    tableData: TableData;
 
     constructor(table: HTMLTableElement, instructions: AggregateInstruction[], pivotingGroups: string[]) {
         this.table = table;
+        this.tableData = new TableData(table);
         this.aggregations = groupInstructionsByColumn(instructions);
         this.groups = pivotingGroups;
     }
 
-    collapseTable() {
-        console.debug("collapsing table...");
-        const rows = Array.from(this.table.querySelectorAll("tbody tr")) as HTMLTableRowElement[];
-        const columnReverseMap = new Map(
-            Array.from(this.table.querySelectorAll("thead th")).map((th, idx) => [th.textContent?.trim() ?? "", idx])
-        );
+    /**
+     * Collapses the table by the specified group columns and returns a new TableData object.
+     * The original TableData object remains unchanged.
+     * Each group is aggregated according to the aggregation instructions.
+     *
+     * @param tableData - The source TableData object to collapse.
+     * @returns {TableData} A new TableData object representing the grouped and aggregated table.
+     */
+    collapseTable(tableData: TableData): TableData {
+        const columns = [...this.groups, ...Object.keys(this.aggregations)];
+        const columnReverseMap = tableData.columns;
         const getPivotId = getPivotIdGenerator(this.groups, columnReverseMap);
 
-        // Group rows by the pivotId
-        const groupedRows = rows.reduce((acc, row) => {
-            const cells = row.querySelectorAll("td");
-            const allCellValues = Array.from(cells).map(td => td.textContent?.trim() ?? "");
-            const { pivotId, distinctCellValues } = getPivotId(allCellValues);
-
-            acc[pivotId] = acc[pivotId] || { cellValues: distinctCellValues, rows: [] };
-            acc[pivotId].rows.push(row);
-            return acc;
-        }, {} as {
-            [pivotId: string]: {
-                cellValues: CellValue[],
-                rows: HTMLTableRowElement[],
+        const grouped = tableData.rows.reduce((acc, row, rowIdx) => {
+            const cellValues = tableData.getValues({ rowIdx });
+            const { pivotId, distinctCellValues } = getPivotId(cellValues);
+            if (!acc[pivotId]) {
+                acc[pivotId] = { cellValues: distinctCellValues, rowIndices: [] };
             }
-        });
+            acc[pivotId].rowIndices.push(rowIdx);
+            return acc;
+        }, {} as { [pivotId: string]: { cellValues: CellValue[], rowIndices: number[] } });
 
-        console.debug("Grouped Rows:", groupedRows);
+        const newRows: CellValue[][] = [];
 
-        // construct a new table with grouped rows and aggregation results.
-        const columns = [
-            ...this.groups,
-            ...Object.keys(this.aggregations)
-        ]
-
-        const newTable = getBlankTable();
-        populateHeaders(newTable, columns);
-        Object.values(groupedRows).forEach(({ cellValues: staticCellValues, rows }) => {
-            addBlankRow(newTable);
-            const newRow = newTable.querySelector("tbody tr:last-child")! as HTMLTableRowElement;
-
-            // add static cell values (first few)
-            console.log("Static Cell Values:", staticCellValues, "Number of rows in group:", rows.length);
-            staticCellValues.forEach((val, idx) => {
-                const cell = newRow.querySelectorAll("td")[idx];
-                if (cell) {
-                    cell.textContent = String(val);
-                }
+        Object.values(grouped).forEach(({ cellValues, rowIndices }) => {
+            const row: CellValue[] = [];
+            cellValues.forEach((val) => {
+                row.push(val);
             });
-
-            // Add aggregated cell values (remaining)
-            Object.keys(this.aggregations).forEach((column, colIndexOffset) => {
-                populateCell(newRow, { name: column, index: staticCellValues.length + colIndexOffset }, rows, this.aggregations);
+            Object.keys(this.aggregations).forEach((column) => {
+                const values = rowIndices.map(rowIdx => tableData.getCell({ rowIdx, col: column }).getValue());
+                const aggResults = (this.aggregations[column] || []).map(aggregatorEnum => getAggregatedCellValue(aggregatorEnum, values));
+                row.push(aggResults.join(", "));
             });
+            newRows.push(row);
         });
 
-        console.debug("New Table Constructed. New row count:", newTable.querySelectorAll("tbody tr").length);
-        this.table.innerHTML = newTable.innerHTML;
-    }
+        const newTableData = new TableData();
+        newTableData.columns = columns.reduce((acc, name, idx) => {
+            acc[name] = idx;
+            return acc;
+        }, {} as { [name: string]: number });
+        newTableData.rows = newRows.map(rowArr =>
+            rowArr.map(val => new ExtendedCellValue({ unresolvedValue: String(val) }))
+        );
 
-    appendSummaryRow() {
-        const columns = Array.from(this.table.querySelectorAll("thead th")).map(th => th.textContent?.trim() ?? "");
-        const rows = Array.from(this.table.querySelectorAll("tbody tr")) as HTMLTableRowElement[];
-
-        // Start by adding the summary row to the bottom
-        addBlankRow(this.table);
-
-        // populate the row
-        const summaryRow = this.table.querySelector("tbody tr:last-child")! as HTMLTableRowElement;
-        columns.forEach((column, colIdx) => {
-            populateCell(summaryRow, { name: column, index: colIdx }, rows, this.aggregations);
-        });
+        return newTableData;
     }
 
     aggregate() {
@@ -231,11 +159,18 @@ class AggregationCoordinator {
             return;
         }
 
+        let tableData = this.tableData;
+
         if (this.groups.length > 0) {
-            this.collapseTable();
-        } else {
-            this.appendSummaryRow();
+            tableData = this.collapseTable(tableData);
         }
+
+        if (this.summaryInstructions.length > 0) {
+            // TODO implement
+            tableData.createSummaryRow([]);
+        }
+
+        this.table.innerHTML = tableData.getInnerHtml();
     }
 }
 

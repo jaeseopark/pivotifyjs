@@ -1,6 +1,6 @@
 import { aggregate, getAggregateInstructions } from "@/aggregation";
 import { processAllTables } from "@/pivotifyjs";
-import { loadHtml, loadTableFromHtml } from "./testUtils";
+import { loadHtml, loadTableFromHtml, normalizeHtml } from "./testUtils";
 
 
 describe("getAggregations", () => {
@@ -51,10 +51,7 @@ describe("aggregateTable", () => {
 
 describe("aggregateTable with groups", () => {
     it("adds subtotal rows for each group and a grand total row", () => {
-        loadHtml("subscriptions.complex.html");
-
-        const table = document.querySelector("table")!;
-        expect(table).toBeDefined();
+        const table = loadTableFromHtml("subscriptions.complex.html");
 
         const p = document.createElement("p");
         p.innerHTML = `
@@ -71,15 +68,11 @@ describe("aggregateTable with groups", () => {
             parent?.parentElement?.appendChild(p);
         }
 
-        const rowCountBefore = document.querySelectorAll("tbody tr").length;
-        expect(rowCountBefore).toBe(9);
-
         processAllTables();
 
-        const rowCountAfter = document.querySelectorAll("tbody tr").length;
-        // There are 3 groups, so we expect to see 3 rows after transformation.
-        expect(rowCountAfter).toEqual(3);
+        const newTable = document.querySelector("table")!;
+        const expectedTable = loadTableFromHtml("subscriptions.expected.aggregation.html");
 
-        console.debug(document.body.innerHTML);
+        expect(normalizeHtml(newTable.outerHTML)).toEqual(normalizeHtml(expectedTable.outerHTML));
     });
 });

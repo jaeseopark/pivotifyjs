@@ -14,7 +14,7 @@ export const getComputeInstructions = (text: string): ComputeInstruction[] => {
     const lines = text.split(/<br>|\r?\n/).filter(line => line.trim().startsWith(COMPUTE_KEYWORD));
     return lines
         .map(line => {
-            const match = line.match(/PIVOTIFYJS_COMPUTE:"([^"]+)"=(.+)/);
+            const match = line.match(/PIVOTIFYJS_COMPUTE:"([^"]+)"="(.+)"/);
             if (!match) return null;
             const column = match[1];
             const equation = match[2]!.trim();
@@ -47,8 +47,8 @@ export const getComputeInstructions = (text: string): ComputeInstruction[] => {
 export const appendComputedColumns = (table: HTMLTableElement, instructions: ComputeInstruction[]) => {
     instructions.forEach(comp => {
         // Note headers need to be re-fetched for each computation in case multiple computations are chained.
-        const thead = table.querySelector("thead");
-        const theadCells = thead!.querySelectorAll("th"); // assume only one thead row in a table.
+        const tr = table.querySelector("thead tr");
+        const theadCells = tr!.querySelectorAll("th"); // assume only one thead row in a table.
         const headers = Array.from(theadCells).map(th => th.textContent.trim());
 
         // Build columnReverseIndex: { [columnName: string]: number }
@@ -60,7 +60,7 @@ export const appendComputedColumns = (table: HTMLTableElement, instructions: Com
         // Add new column header
         const th = document.createElement("th");
         th.textContent = comp.column;
-        thead!.appendChild(th);
+        tr!.appendChild(th);
 
         // Re-query rows after header change
         const trs = table.querySelectorAll("tbody tr");
@@ -86,6 +86,9 @@ export const appendComputedColumns = (table: HTMLTableElement, instructions: Com
 
             // TODO: make this more secure. passing user input to eval is dangerous.
             const computedValue = eval(substitutedEquation);
+            if (computedValue === undefined || computedValue === null || isNaN(computedValue)) {
+                throw new Error(`Computation resulted in invalid value for equation: '${substitutedEquation}'`);
+            }
 
             const td = document.createElement("td");
             td.textContent = computedValue;
