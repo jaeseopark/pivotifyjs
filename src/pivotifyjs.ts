@@ -10,7 +10,7 @@ class PivotifyJS {
         this.table = table.cloneNode(true) as HTMLTableElement;
     }
 
-    analyze(rawInstructions: string) {
+    static analyze(rawInstructions: string) {
         const pivotingGroups = getPivotingGroups(rawInstructions);
         const computeInstructions: ComputeInstruction[] = getComputeInstructions(rawInstructions);
         const aggregateInstructions: AggregateInstruction[] = getAggregateInstructions(rawInstructions);
@@ -59,15 +59,13 @@ class PivotifyJS {
  * @returns {HTMLTableElement | undefined} The processed table element, or undefined if no instructions are found.
  */
 const processTable = (table: HTMLTableElement, p: HTMLParagraphElement): HTMLTableElement | undefined => {
-    const text = p.innerHTML;
-
-    const pivotifyJs = new PivotifyJS(table);
-
-    const { pivotingGroups, computeInstructions, aggregateInstructions } = pivotifyJs.analyze(text);
+    const { pivotingGroups, computeInstructions, aggregateInstructions } = PivotifyJS.analyze(p.innerHTML);
 
     if (computeInstructions.length === 0 && aggregateInstructions.length === 0) {
         return undefined;
     }
+
+    const pivotifyJs = new PivotifyJS(table);
 
     pivotifyJs.sanitizeTable();
     pivotifyJs.compute(computeInstructions);

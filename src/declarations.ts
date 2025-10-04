@@ -1,13 +1,8 @@
 import { AggregatorEnum, CellValue } from "./types";
 
 export const AGGREGATION_SIGNATURE_MAP: {
-    [key in Exclude<AggregatorEnum, AggregatorEnum.FIRST>]: {
+    [key in AggregatorEnum]: {
         handler: (values: number[]) => number;
-        label: string;
-    };
-} & {
-    [AggregatorEnum.FIRST]: {
-        handler: (values: CellValue[]) => CellValue;
         label: string;
     };
 } = {
@@ -36,10 +31,4 @@ export const AGGREGATION_SIGNATURE_MAP: {
         },
         label: "Median"
     },
-    [AggregatorEnum.FIRST]: {
-        handler: (values: CellValue[]) => {
-            return values[0] ?? "";
-        },
-        label: "First"
-    }
 };

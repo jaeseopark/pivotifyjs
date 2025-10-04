@@ -32,12 +32,12 @@ const getPivotIdGenerator = (pivots: string[], columnReverseMap: { [column: stri
 
 
 const getAggregatedCellValue = (aggregatorEnum: AggregatorEnum, values: CellValue[]) => {
-    let aggResult: CellValue;
-    if (aggregatorEnum === AggregatorEnum.FIRST) {
-        aggResult = AGGREGATION_SIGNATURE_MAP[aggregatorEnum].handler(values);
-    } else {
-        aggResult = AGGREGATION_SIGNATURE_MAP[aggregatorEnum].handler(values as number[]);
+    const validValues = values.filter(v => typeof v === "number" && !isNaN(v)) as number[];
+    if (validValues.length === 0) {
+        return `${AGGREGATION_SIGNATURE_MAP[aggregatorEnum].label}: N/A`;
     }
+
+    let aggResult: CellValue = AGGREGATION_SIGNATURE_MAP[aggregatorEnum].handler(validValues);
 
     let stringifiedResult: string;
     if (typeof aggResult === "number") {

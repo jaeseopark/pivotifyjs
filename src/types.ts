@@ -5,7 +5,6 @@ export enum AggregatorEnum {
     MAX = "PIVOTIFYJS_MAX",
     AVERAGE = "PIVOTIFYJS_AVERAGE",
     MEDIAN = "PIVOTIFYJS_MEDIAN",
-    FIRST = "PIVOTIFYJS_FIRST"
 }
 
 export type ComputeInstruction = {
