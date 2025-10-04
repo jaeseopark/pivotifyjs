@@ -8,7 +8,7 @@
 
 1. Include the script
   ```html
-  <script src="https://cdn.jsdelivr.net/npm/pivotifyjs/dist/pivotify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pivotifyjs/dist/pivotifyjs.min.js"></script>
   ```
 
 1. Add a keyword block below your table
@@ -34,7 +34,7 @@
 
   <p>
     PIVOTIFYJS_SUM:["Annual Cost"]<br>
-    PIVOTIFYJS_AVG:["Annual Cost"]
+    PIVOTIFYJS_AVERAGE:["Annual Cost"]
   </p>
   ```
 1. The script does the rest
@@ -45,5 +45,4 @@ You will see a new row get added to the bottom of the table, with the cell value
 
 ## Supported Keywords
 
-* `PIVOTIFYJS_SUM`
-* `PIVOTIFYJS_AVG`
+See [`constants.js`](src/constants.js).
