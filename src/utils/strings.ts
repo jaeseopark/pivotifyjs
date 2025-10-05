@@ -1,7 +1,8 @@
-import { SUMMARY_PREFIX } from "@/constants";
+import { GLOBAL_PREFIX, SUMMARY_PREFIX } from "@/constants";
+import { AggregateOperator } from "@/types";
 
-export function getAggregatedColumns(text: string, keyword: string, { isSummary = false }): string[] {
-    const prefix = isSummary ? SUMMARY_PREFIX : "PIVOTIFYJS";
+export function getAggregatedColumns(text: string, keyword: AggregateOperator, { isSummary = false }): string[] {
+    const prefix = isSummary ? SUMMARY_PREFIX : GLOBAL_PREFIX;
     const match = text.match(new RegExp(`\\s*${prefix}_${keyword}:\\s*(\\[[^\\]]*\\])`));
     return match ? JSON.parse(match[1]!) : [];
 }

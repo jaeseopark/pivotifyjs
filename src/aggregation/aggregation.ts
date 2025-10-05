@@ -1,37 +1,26 @@
 import {
     AggregateInstruction,
-    AggregatorEnum
+    AggregateOperator
 } from "@/types";
+import { SUMMARY_PREFIX } from "@/constants";
 import { getAggregatedColumns } from "@/utils";
 import { TableData } from "@/models/TableData";
 import { collapseTable } from "@/aggregation/collapse";
-import { SUMMARY_PREFIX } from "@/constants";
+import { groupInstructionsByColumn } from "@/aggregation/instructions";
 
 export const getAggregateInstructions = (text: string, {
     isSummary = false
 }): AggregateInstruction[] => {
-    return Object.values(AggregatorEnum).reduce((acc, aggregatorEnum) => {
+    return Object.values(AggregateOperator).reduce((acc, aggregatorEnum) => {
         getAggregatedColumns(text, aggregatorEnum, {
             isSummary
         }).forEach(column => {
-            acc.push({ column, aggregator: aggregatorEnum });
+            acc.push({ column, operator: aggregatorEnum });
         });
 
         return acc;
     }, [] as AggregateInstruction[]);
 };
-
-export const groupInstructionsByColumn = (instructions: AggregateInstruction[]): {
-    [column: string]: AggregatorEnum[]
-} => {
-    return instructions.reduce((acc, instr) => {
-        acc[instr.column] = acc[instr.column] || [];
-        if (!acc[instr.column]!.includes(instr.aggregator)) {
-            acc[instr.column]!.push(instr.aggregator);
-        }
-        return acc;
-    }, {} as { [column: string]: AggregatorEnum[] });
-}
 
 /**
  * Aggregates the given HTMLTableElement by the specified groups and instructions.

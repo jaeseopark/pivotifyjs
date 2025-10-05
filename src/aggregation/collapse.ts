@@ -1,7 +1,8 @@
 import { DEFAULT_DECIMAL_PLACES } from "@/constants";
-import { AGGREGATION_SIGNATURE_MAP } from "@/declarations";
+import { AGGREGATION_SIGNATURE_MAP, assertNumericArray } from "@/aggregation/handlers";
 import { TableData, ExtendedCellValue } from "@/models/TableData";
-import { AggregatorEnum, CellValue } from "@/types";
+import { AggregateOperator, CellValue } from "@/types";
+import { assert } from "console";
 
 
 type GetPivotIdReturnType = (allCellValues: CellValue[]) => {
@@ -30,13 +31,10 @@ const getPivotIdGenerator = (pivots: string[], columnReverseMap: { [column: stri
 };
 
 
-const getAggregatedCellValue = (aggregatorEnum: AggregatorEnum, values: CellValue[]) => {
-    const validValues = values.filter(v => typeof v === "number" && !isNaN(v)) as number[];
-    if (validValues.length === 0) {
-        return `${AGGREGATION_SIGNATURE_MAP[aggregatorEnum].label}: N/A`;
-    }
+const getAggregatedCellValue = (aggregatorEnum: AggregateOperator, values: CellValue[]) => {
+    assertNumericArray(values, (details) => `Cannot aggregate using '${aggregatorEnum}' because the data contains non-numeric values: ${details}.`);
 
-    let aggResult: CellValue = AGGREGATION_SIGNATURE_MAP[aggregatorEnum].handler(validValues);
+    let aggResult: CellValue = AGGREGATION_SIGNATURE_MAP[aggregatorEnum].handler(values as number[]);
 
     let stringifiedResult: string;
     if (typeof aggResult === "number") {
@@ -61,7 +59,7 @@ const getAggregatedCellValue = (aggregatorEnum: AggregatorEnum, values: CellValu
  * @param tableData - The source TableData object to collapse.
  * @returns {TableData} A new TableData object representing the grouped and aggregated table.
  */
-export function collapseTable(tableData: TableData, groups: string[], aggregations: { [column: string]: AggregatorEnum[] }): TableData {
+export function collapseTable(tableData: TableData, groups: string[], aggregations: { [column: string]: AggregateOperator[] }): TableData {
     const columns = [...groups, ...Object.keys(aggregations)];
     const columnReverseMap = tableData.columns;
     const getPivotId = getPivotIdGenerator(groups, columnReverseMap);
@@ -97,7 +95,7 @@ export function collapseTable(tableData: TableData, groups: string[], aggregatio
         return acc;
     }, {} as { [name: string]: number });
     newTableData.rows = newRows.map(rowArr =>
-        rowArr.map(val => new ExtendedCellValue({ unresolvedValue: String(val) }))
+        rowArr.map(val => new ExtendedCellValue({ unresolvedValue: String(val), substitute: () => String(val) }))
     );
 
     return newTableData;

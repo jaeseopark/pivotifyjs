@@ -6,17 +6,17 @@ import { ComputeInstruction } from "@/types";
 // Note this file uses raw HTML processing. TODO: use the TableData model instead.
 
 /**
- * Parses PIVOTIFYJS_COMPUTE lines. Only 1 computed field allowed per line, separated by <br> tags or by newlines.
+ * Parses compute lines. Only 1 computed field allowed per line, separated by <br> tags or by newlines.
  * 
  * @param {string} text
  * @returns {Array<{column:string, equation:string, variables:Array<{column:string, default:string|number}>}>}
  */
 export const getComputeInstructions = (text: string): ComputeInstruction[] => {
     // Support both <br> and newline as line separators (Windows compatible)
-    const lines = text.split(/<br>|\r?\n/).filter(line => line.trim().startsWith(COMPUTE_KEYWORD));
+    const lines = text.split(/<br>|\r?\n/).filter(line => line.trim().startsWith(COMPUTE_KEYWORD + ":"));
     return lines
         .map(line => {
-            const match = line.match(/PIVOTIFYJS_COMPUTE:"([^"]+)"="(.+)"/);
+            const match = line.match(/.*:"([^"]+)"="(.+)"/);
             if (!match) return null;
             const column = match[1];
             const equation = match[2]!.trim();

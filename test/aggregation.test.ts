@@ -1,6 +1,7 @@
-import { aggregate, getAggregateInstructions } from "@/aggregation";
+import { getAggregateInstructions } from "@/aggregation";
 import { processAllTables } from "@/pivotifyjs";
 import { loadTableFromHtml, normalizeHtml } from "./testUtils";
+import { summarize } from "@/aggregation/summarization";
 
 
 describe("getAggregations", () => {
@@ -10,26 +11,30 @@ describe("getAggregations", () => {
             PIVOTIFYJS_AVERAGE:["Annual Cost"]
             PIVOTIFYJS_MIN:    ["Qty"]
         `;
-        const result = getAggregateInstructions(text);
+        const result = getAggregateInstructions(text, { isSummary: false });
 
         expect(result).toHaveLength(5);
-        expect(result).toContainEqual({ aggregator: "PIVOTIFYJS_SUM", column: "Annual Cost" });
-        expect(result).toContainEqual({ aggregator: "PIVOTIFYJS_SUM", column: "Unit Cost" });
-        expect(result).toContainEqual({ aggregator: "PIVOTIFYJS_SUM", column: "Qty" });
-        expect(result).toContainEqual({ aggregator: "PIVOTIFYJS_AVERAGE", column: "Annual Cost" });
-        expect(result).toContainEqual({ aggregator: "PIVOTIFYJS_MIN", column: "Qty" });
+        expect(result).toContainEqual({ operator: "SUM", column: "Annual Cost" });
+        expect(result).toContainEqual({ operator: "SUM", column: "Unit Cost" });
+        expect(result).toContainEqual({ operator: "SUM", column: "Qty" });
+        expect(result).toContainEqual({ operator: "AVERAGE", column: "Annual Cost" });
+        expect(result).toContainEqual({ operator: "MIN", column: "Qty" });
     });
 });
 
 describe("aggregateTable", () => {
     it("adds summary row with average and sum when no groups are specified", () => {
         const table = loadTableFromHtml("subscriptions.simple.html");
-        const rowCountBefore = table.querySelectorAll("tbody tr").length;
-
-        aggregate(table, [], getAggregateInstructions(`
+        const instructions = getAggregateInstructions(`
             PIVOTIFYJS_SUM:["Annual Cost"]
             PIVOTIFYJS_AVERAGE:["Annual Cost"]
-        `));
+        `, {
+            isSummary: true
+        });
+
+        const rowCountBefore = table.querySelectorAll("tbody tr").length;
+
+        summarize(table, instructions);
 
         const rowCountAfter = table.querySelectorAll("tbody tr").length;
 

@@ -1,10 +1,10 @@
 
-export enum AggregatorEnum {
-    SUM = "PIVOTIFYJS_SUM",
-    MIN = "PIVOTIFYJS_MIN",
-    MAX = "PIVOTIFYJS_MAX",
-    AVERAGE = "PIVOTIFYJS_AVERAGE",
-    MEDIAN = "PIVOTIFYJS_MEDIAN",
+export enum AggregateOperator {
+    SUM = "SUM",
+    MIN = "MIN",
+    MAX = "MAX",
+    AVERAGE = "AVERAGE",
+    MEDIAN = "MEDIAN",
 }
 
 export type ComputeInstruction = {
@@ -15,7 +15,7 @@ export type ComputeInstruction = {
 
 export interface AggregateInstruction {
     column: string,
-    aggregator: AggregatorEnum
+    operator: AggregateOperator
 };
 
 export interface SummarizeInstruction extends AggregateInstruction {

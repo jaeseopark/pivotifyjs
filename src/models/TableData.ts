@@ -1,24 +1,34 @@
-import { AggregateInstruction, SummarizeInstruction } from "@/types";
+import { CellValue } from "@/types";
 
-type CellValue = string | number;
-
-type ExtendedCellValueProps = { resolvedValue?: CellValue, unresolvedValue?: string, substitute?: () => string }
+type ExtendedCellValueProps = { resolvedValue: CellValue } | { unresolvedValue: string, substitute: () => string }
 
 export class ExtendedCellValue {
     private value: CellValue;
     private isResolved: boolean;
-    private substitute: () => string;
+    private substitute?: () => string;
 
-    constructor({ resolvedValue, unresolvedValue, substitute }: ExtendedCellValueProps) {
-        this.value = (resolvedValue || unresolvedValue)!;
-        this.isResolved = typeof resolvedValue !== "undefined";
-        this.substitute = substitute || (() => unresolvedValue || "");
+    constructor(props: ExtendedCellValueProps) {
+        if ('resolvedValue' in props) {
+            this.value = props.resolvedValue;
+            this.isResolved = true;
+        } else {
+            var { unresolvedValue, substitute } = props;
+            this.value = unresolvedValue;
+            this.isResolved = false;
+            this.substitute = substitute;
+        }
+
     }
 
+    /**
+     * Resolves the cell value by substituting variable references and evaluating expressions.
+     * Assumption: this method is called only if the value is not yet resolved, which implies that the substitute function is defined.
+     * @returns The resolved cell value as a string or number.
+     */
     private resolve(): CellValue {
         let val = this.value as string; // unresolved value is always a string
         if (val.match(/\$\{[^}]+\}/)) {
-            val = this.substitute();
+            val = this.substitute?.() as string;
         }
 
         try {
@@ -90,16 +100,22 @@ export class TableData {
         return cell.getValue();
     }
 
-    getValues({ rowIdx }: { rowIdx: number }): CellValue[] {
-        return this.rows[rowIdx]!.map(cell => cell.getValue());
+    getValues(props: { rowIdx: number } | { colIdx: number }): CellValue[] {
+        if ("rowIdx" in props) {
+            return this.rows[props.rowIdx]!.map(cell => cell.getValue());
+        } else {
+            return this.rows.map(row => row[props.colIdx]!.getValue());
+        }
     }
 
     clone(): TableData {
         return new TableData(this.getHtmlTableElement());
     }
 
-    createSummaryRow(instructions: SummarizeInstruction[]) {
-        // TODO implement
+    createRow() {
+        const newRow: ExtendedCellValue[] = [];
+        this.rows.push(newRow);
+        return newRow;
     }
 
     getHtmlTableElement(): HTMLTableElement {
