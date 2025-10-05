@@ -16,7 +16,7 @@ export default [
     rules: {
       "no-multiple-empty-lines": ["warn", { "max": 2 }],
       "@typescript-eslint/no-unused-vars": [
-        "error",
+        "warn",
         {
           "vars": "all",
           "args": "after-used",
@@ -26,7 +26,11 @@ export default [
           "caughtErrors": "all",
           "caughtErrorsIgnorePattern": "^_"
         }
-      ]
+      ],
+      "object-curly-spacing": [
+        "error",
+        "always"
+      ],
     }
   }
 ];

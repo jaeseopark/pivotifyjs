@@ -9,11 +9,12 @@ import { PivotifyJS } from "@/models/PivotifyJS";
  * @returns {HTMLTableElement | undefined} The processed table element, or undefined if no instructions are found.
  */
 const processTable = (table: HTMLTableElement, p: HTMLParagraphElement): HTMLTableElement | undefined => {
-    const { pivotingGroups, computeInstructions, aggregateInstructions, summarizeInstructions } = PivotifyJS.analyze(p.innerHTML);
+    const { pivotingGroups, computeInstructions, aggregateInstructions, summarizeInstructions, styleInstructions } = PivotifyJS.analyze(p.innerHTML);
 
     if (computeInstructions.length === 0
         && aggregateInstructions.length === 0
-        && summarizeInstructions.length === 0) {
+        && summarizeInstructions.length === 0
+        && styleInstructions.length === 0) {
         return undefined;
     }
 
@@ -23,6 +24,7 @@ const processTable = (table: HTMLTableElement, p: HTMLParagraphElement): HTMLTab
     pivotifyJs.compute(computeInstructions);
     pivotifyJs.aggregate(pivotingGroups, aggregateInstructions);
     pivotifyJs.summarize(summarizeInstructions);
+    pivotifyJs.stylize(styleInstructions);
 
     // Return the modified copy of the table
     return pivotifyJs.table;

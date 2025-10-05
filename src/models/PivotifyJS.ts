@@ -1,8 +1,9 @@
-import { AggregateInstruction, ComputeInstruction, SummarizeInstruction } from "@/types";
+import { AggregateInstruction, ComputeInstruction, StyleInstruction, SummarizeInstruction } from "@/types";
 import { aggregate, getAggregateInstructions } from "@/aggregation";
 import { appendComputedColumns, getComputeInstructions } from "@/computation";
 import { getPivotingGroups, expandColspanRowspan } from "@/utils";
 import { summarize } from "@/aggregation/summarization";
+import { getStyleInstructions, stylize } from "@/stylization";
 
 export class PivotifyJS {
     table: HTMLTableElement;
@@ -16,12 +17,14 @@ export class PivotifyJS {
         const computeInstructions: ComputeInstruction[] = getComputeInstructions(rawInstructions);
         const summarizeInstructions: SummarizeInstruction[] = getAggregateInstructions(rawInstructions, { isSummary: true });
         const aggregateInstructions: AggregateInstruction[] = getAggregateInstructions(rawInstructions, { isSummary: false });
+        const styleInstructions: StyleInstruction[] = getStyleInstructions(rawInstructions);
 
         return {
             pivotingGroups,
             computeInstructions,
             aggregateInstructions,
-            summarizeInstructions
+            summarizeInstructions,
+            styleInstructions
         };
     }
 
@@ -52,5 +55,13 @@ export class PivotifyJS {
         }
 
         summarize(this.table, summarizeInstructions);
+    }
+
+    stylize(styleInstructions: StyleInstruction[]) {
+        if (styleInstructions.length === 0) {
+            return;
+        }
+
+        stylize(this.table, styleInstructions);
     }
 }

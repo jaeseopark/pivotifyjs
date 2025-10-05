@@ -9,6 +9,7 @@ export class ExtendedCellValue {
     private value: CellValue;
     private isResolved: boolean;
     private substitute?: () => string;
+    public cssStyle?: string;
 
     constructor(props: ExtendedCellValueProps) {
         if ('resolvedValue' in props) {
@@ -52,5 +53,15 @@ export class ExtendedCellValue {
             this.isResolved = true;
         }
         return this.value;
+    }
+
+    getHtmlCellElement(): HTMLTableCellElement {
+        const td = document.createElement("td");
+        // putting ?? to account for 0 (numeric zero) case.
+        td.textContent = String(this.getValue() ?? "");
+        if (this.cssStyle) {
+            td.style.cssText = this.cssStyle;
+        }
+        return td;
     }
 }
