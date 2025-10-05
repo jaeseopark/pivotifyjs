@@ -5,7 +5,7 @@ import { summarize } from "@/aggregation/summarization";
 
 
 describe("getAggregations", () => {
-    it("parses aggregation keywords and columns from text", () => {
+    it("should parse aggregation keywords and columns from text", () => {
         const text = `
             PIVOTIFYJS_SUM:["Annual Cost", "Unit Cost", "Qty"]
             PIVOTIFYJS_AVERAGE:["Annual Cost"]
@@ -23,7 +23,7 @@ describe("getAggregations", () => {
 });
 
 describe("aggregateTable", () => {
-    it("adds summary row with average and sum when no groups are specified", () => {
+    it("should add summary row with average and sum when no groups are specified", () => {
         const table = loadTableFromHtml("subscriptions.simple.html");
         const instructions = getAggregateInstructions(`
             PIVOTIFYJS_SUMMARY_SUM:["Annual Cost"]
@@ -56,7 +56,7 @@ describe("aggregateTable", () => {
 });
 
 describe("aggregateTable with groups", () => {
-    it("adds subtotal rows for each group and a grand total row", () => {
+    it("should add subtotal rows for each group and a grand total row", () => {
         const table = loadTableFromHtml("subscriptions.complex.html");
 
         const p = document.createElement("p");

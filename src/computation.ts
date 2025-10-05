@@ -77,6 +77,11 @@ export const appendComputedColumns = (table: HTMLTableElement, instructions: Com
                 if (colIdx !== undefined && row[colIdx]) {
                     value = row[colIdx].textContent.trim();
                 }
+                try {
+                    value = eval(value);
+                } catch (error) {
+                    // swallow
+                }
                 if (!isNaN(Number(value))) {
                     // Replace all occurrences of the variable in the equation with its numeric value
                     const regex = new RegExp(`\\$\\{${variable.column}\\}`, "g");

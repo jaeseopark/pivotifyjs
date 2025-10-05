@@ -2,31 +2,37 @@ import { DEFAULT_DECIMAL_PLACES } from "@/constants";
 import { AGGREGATION_SIGNATURE_MAP, assertNumericArray } from "@/aggregation/handlers";
 import { TableData, ExtendedCellValue } from "@/models/TableData";
 import { AggregateOperator, CellValue } from "@/types";
-import { assert } from "console";
 import { formatNumericCellValue } from "@/utils";
 
 
 type GetPivotIdReturnType = (allCellValues: CellValue[]) => {
-    pivotId: string,
-    distinctCellValues: CellValue[]
+    /**
+     * Values corresponding to the pivot columns, in order.
+     */
+    underlyingCellValues: CellValue[];
+    /**
+     * Unique ID representing the combination of pivot values.
+     * This is a concatenation of the underlyingCellValues with "||" separator.
+     */
+    pivotId: string;
 };
 
 
 const getPivotIdGenerator = (pivots: string[], columnReverseMap: { [column: string]: number }): GetPivotIdReturnType => {
     return (allCellValues: CellValue[]) => {
-        const distinctCellValues = pivots.map(pivot => {
+        const underlyingCellValues = pivots.map(pivot => {
             const colIdx = columnReverseMap[pivot];
             if (colIdx === undefined) {
                 return "";
             }
-            return allCellValues[colIdx] as CellValue;
+            return allCellValues[colIdx] as CellValue || "";
         });
 
-        const pivotId = distinctCellValues.join("||");
+        const pivotId = underlyingCellValues.join("||");
 
         return {
             pivotId,
-            distinctCellValues
+            underlyingCellValues
         }
     };
 };
@@ -56,21 +62,18 @@ export function collapseTable(tableData: TableData, groups: string[], aggregatio
 
     const grouped = tableData.rows.reduce((acc, row, rowIdx) => {
         const cellValues = tableData.getValues({ rowIdx });
-        const { pivotId, distinctCellValues } = getPivotId(cellValues);
+        const { pivotId, underlyingCellValues } = getPivotId(cellValues);
         if (!acc[pivotId]) {
-            acc[pivotId] = { cellValues: distinctCellValues, rowIndices: [] };
+            acc[pivotId] = { staticValues: underlyingCellValues, rowIndices: [] };
         }
         acc[pivotId].rowIndices.push(rowIdx);
         return acc;
-    }, {} as { [pivotId: string]: { cellValues: CellValue[], rowIndices: number[] } });
+    }, {} as { [pivotId: string]: { staticValues: CellValue[], rowIndices: number[] } });
 
     const newRows: CellValue[][] = [];
 
-    Object.values(grouped).forEach(({ cellValues, rowIndices }) => {
-        const row: CellValue[] = [];
-        cellValues.forEach((val) => {
-            row.push(val);
-        });
+    Object.values(grouped).forEach(({ staticValues, rowIndices }) => {
+        const row: CellValue[] = staticValues.map(value => value || "");
         Object.entries(aggregations).forEach(([column, operators]) => {
             const values = rowIndices.map(rowIdx => tableData.getCell({ rowIdx, col: column }).getValue());
             const aggResults = (operators).map(aggregatorEnum => getAggregatedCellValue({ operator: aggregatorEnum, values, showOperatorLabel: operators.length > 1 }));
@@ -85,7 +88,7 @@ export function collapseTable(tableData: TableData, groups: string[], aggregatio
         return acc;
     }, {} as { [name: string]: number });
     newTableData.rows = newRows.map(rowArr =>
-        rowArr.map(val => new ExtendedCellValue({ unresolvedValue: String(val), substitute: () => String(val) }))
+        rowArr.map(resolvedValue => new ExtendedCellValue({ resolvedValue }))
     );
 
     return newTableData;
