@@ -31,14 +31,20 @@ jobs:
       - name: Build project
         run: npm run build
 
-      - name: Update package.json version to match git tag
+      - name: Extract tag version
+        id: extract_version
         run: |
           TAG_VERSION="${GITHUB_REF#refs/tags/}"
           TAG_VERSION="${TAG_VERSION#v}"
-          npm version "$TAG_VERSION" --no-git-tag-version
+          echo "tag_version=$TAG_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update package.json version to match git tag
+        run: |
+          npm version "${{ steps.extract_version.outputs.tag_version }}" --no-git-tag-version
 
       - name: Publish to npm # OIDC enabled, no secrets needed.
         run: |
+          TAG_VERSION="${{ steps.extract_version.outputs.tag_version }}"
           if [[ "$TAG_VERSION" == *-* ]]; then
             npm publish --access public --tag next
           else
