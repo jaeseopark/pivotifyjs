@@ -11,7 +11,7 @@
     <script src="https://cdn.jsdelivr.net/npm/pivotifyjs/dist/pivotifyjs.min.js"></script>
     ```
 
-2. **Add a keyword block below your table**
+2. **Add an instruction block below your table**
 
     ### Example: Grocery Table with Grouping and Expressions
 
@@ -61,7 +61,7 @@
       PIVOTIFYJS_COMPUTE:"Subtotal"="${Unit Cost} * ${Quantity}"<br>
       PIVOTIFYJS_GROUPS:["Category"]<br>
       PIVOTIFYJS_SUM:["Subtotal"]<br>
-      PIVOTIFYJS_AVERAGE:["Subtotal"]
+      PIVOTIFYJS_SUMMARY_SUM:["Subtotal"]
     </p>
     ```
 
@@ -71,11 +71,11 @@ You will see summary rows added for each group and a grand total, with computed 
 
 **Sample Output:**
 
-    | Category |  Subtotal
-    |
-    | Produce  |2.99
-    | Dairy    | 11.99
-    |  | **Sum: 14.98**
+|Category|Subtotal|
+|---|---|
+| Produce |2.99
+| Dairy | 11.99
+| | **Sum: 14.98**
 
 ---
 
