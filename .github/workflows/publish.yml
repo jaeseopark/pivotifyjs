@@ -1,9 +1,8 @@
 name: Publish to npm
 
 on:
-  push:
-    tags:
-      - "v*"
+  release:
+    types: [published, prereleased]
 
 permissions:
   id-token: write # Required for OIDC
@@ -31,6 +30,12 @@ jobs:
 
       - name: Build project
         run: npm run build
+
+      - name: Update package.json version to match git tag
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/}"
+          TAG_VERSION="${TAG_VERSION#v}"
+          npm version "$TAG_VERSION" --no-git-tag-version
 
       - name: Publish to npm # OIDC enabled, no secrets needed.
         run: npm publish --access public
