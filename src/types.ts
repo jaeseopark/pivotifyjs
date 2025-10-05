@@ -13,10 +13,14 @@ export type ComputeInstruction = {
     variables: { column: string; default: string }[];
 };
 
-export type AggregateInstruction = {
+export interface AggregateInstruction {
     column: string,
     aggregator: AggregatorEnum
 };
+
+export interface SummarizeInstruction extends AggregateInstruction {
+    // shares the same structure as AggregateInstruction, but declaring as a separate type to enforce type safety.
+}
 
 export type AggregateInstructionsWithGroups = {
     groups: string[],

@@ -1,4 +1,4 @@
-import { AggregateInstruction } from "@/types";
+import { AggregateInstruction, SummarizeInstruction } from "@/types";
 
 type CellValue = string | number;
 
@@ -98,7 +98,7 @@ export class TableData {
         return new TableData(this.getHtmlTableElement());
     }
 
-    createSummaryRow(instructions: AggregateInstruction[]) {
+    createSummaryRow(instructions: SummarizeInstruction[]) {
         // TODO implement
     }
 
