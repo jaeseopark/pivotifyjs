@@ -2,7 +2,7 @@ name: Publish to npm
 
 on:
   release:
-    types: [published, prereleased]
+    types: [published]
 
 permissions:
   id-token: write # Required for OIDC
@@ -38,4 +38,9 @@ jobs:
           npm version "$TAG_VERSION" --no-git-tag-version
 
       - name: Publish to npm # OIDC enabled, no secrets needed.
-        run: npm publish --access public
+        run: |
+          if [[ "$TAG_VERSION" == *-* ]]; then
+            npm publish --access public --tag next
+          else
+            npm publish --access public
+          fi
