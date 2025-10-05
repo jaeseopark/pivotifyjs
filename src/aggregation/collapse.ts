@@ -3,6 +3,7 @@ import { AGGREGATION_SIGNATURE_MAP, assertNumericArray } from "@/aggregation/han
 import { TableData, ExtendedCellValue } from "@/models/TableData";
 import { AggregateOperator, CellValue } from "@/types";
 import { assert } from "console";
+import { formatNumericCellValue } from "@/utils";
 
 
 type GetPivotIdReturnType = (allCellValues: CellValue[]) => {
@@ -31,25 +32,14 @@ const getPivotIdGenerator = (pivots: string[], columnReverseMap: { [column: stri
 };
 
 
-const getAggregatedCellValue = (aggregatorEnum: AggregateOperator, values: CellValue[]) => {
-    assertNumericArray(values, (details) => `Cannot aggregate using '${aggregatorEnum}' because the data contains non-numeric values: ${details}.`);
+const getAggregatedCellValue = (props: { operator: AggregateOperator, values: unknown[], showOperatorLabel: boolean }) => {
+    const { operator, values, showOperatorLabel } = props;
+    assertNumericArray(values, (details) => `Cannot aggregate using '${operator}' because the data contains non-numeric values: ${details}.`);
 
-    let aggResult: CellValue = AGGREGATION_SIGNATURE_MAP[aggregatorEnum].handler(values as number[]);
+    const aggResult = AGGREGATION_SIGNATURE_MAP[operator].handler(values as number[]);
 
-    let stringifiedResult: string;
-    if (typeof aggResult === "number") {
-        // TODO: be able to customize decimal places.
-        stringifiedResult = aggResult.toFixed(DEFAULT_DECIMAL_PLACES);
-        if (stringifiedResult.endsWith(".00")) {
-            stringifiedResult = stringifiedResult.slice(0, -3);
-        }
-    } else {
-        stringifiedResult = String(aggResult);
-    }
-
-    return `${AGGREGATION_SIGNATURE_MAP[aggregatorEnum].label}: ${stringifiedResult}`;
+    return formatNumericCellValue({ value: aggResult, operator: operator, options: { decimalPlaces: DEFAULT_DECIMAL_PLACES, showOperatorLabel } });
 }
-
 
 /**
  * Collapses the table by the specified group columns and returns a new TableData object.
@@ -81,9 +71,9 @@ export function collapseTable(tableData: TableData, groups: string[], aggregatio
         cellValues.forEach((val) => {
             row.push(val);
         });
-        Object.keys(aggregations).forEach((column) => {
+        Object.entries(aggregations).forEach(([column, operators]) => {
             const values = rowIndices.map(rowIdx => tableData.getCell({ rowIdx, col: column }).getValue());
-            const aggResults = (aggregations[column] || []).map(aggregatorEnum => getAggregatedCellValue(aggregatorEnum, values));
+            const aggResults = (operators).map(aggregatorEnum => getAggregatedCellValue({ operator: aggregatorEnum, values, showOperatorLabel: operators.length > 1 }));
             row.push(aggResults.join(", "));
         });
         newRows.push(row);

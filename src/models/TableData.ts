@@ -112,12 +112,6 @@ export class TableData {
         return new TableData(this.getHtmlTableElement());
     }
 
-    createRow() {
-        const newRow: ExtendedCellValue[] = [];
-        this.rows.push(newRow);
-        return newRow;
-    }
-
     getHtmlTableElement(): HTMLTableElement {
         const thead = `<thead><tr>${Object.keys(this.columns).map(col => `<th>${col}</th>`).join("")}</tr></thead>`;
         const tbody = `<tbody>${this.rows.map(row => `<tr>${row.map(cell => `<td>${cell.getValue()}</td>`).join("")}</tr>`).join("")}</tbody>`;

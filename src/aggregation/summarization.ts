@@ -4,6 +4,8 @@ import { ExtendedCellValue, TableData } from "@/models/TableData";
 import { SummarizeInstruction } from "@/types";
 import { groupInstructionsByColumn } from "./instructions";
 import { AGGREGATION_SIGNATURE_MAP, assertNumericArray } from "@/aggregation/handlers";
+import { format } from "path";
+import { formatNumericCellValue } from "@/utils";
 
 /**
  * Summarizes the data in the provided HTMLTableElement using the given summarize instructions.
@@ -24,7 +26,7 @@ export const summarize = (table: HTMLTableElement, summarizeInstructions: Summar
         );
     }
 
-    const row = tableData.createRow();
+    const row: ExtendedCellValue[] = [];
 
     const cells: ExtendedCellValue[] = Object.entries(tableData.columns).map(([columnName, colIdx]) => {
         if (columnName in groupedInstructions) {
@@ -35,8 +37,12 @@ export const summarize = (table: HTMLTableElement, summarizeInstructions: Summar
 
             const summaryResults = instructions.map(instr => {
                 const aggregator = AGGREGATION_SIGNATURE_MAP[instr];
-                if (!aggregator) return "";
-                return `${aggregator.label}: ${aggregator.handler(columnValues as number[])}`;
+                const aggResult = aggregator.handler(columnValues as number[]);
+                return formatNumericCellValue({
+                    value: aggResult, operator: instr, options: {
+                        showOperatorLabel: true
+                    }
+                });
             }).filter(Boolean).join(", ");
             return new ExtendedCellValue({ resolvedValue: summaryResults });
         } else {
@@ -45,6 +51,7 @@ export const summarize = (table: HTMLTableElement, summarizeInstructions: Summar
     });
 
     row.push(...cells);
+    tableData.rows.push(row);
 
     table.innerHTML = tableData.getHtmlTableElement().innerHTML;
 };

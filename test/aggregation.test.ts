@@ -26,11 +26,12 @@ describe("aggregateTable", () => {
     it("adds summary row with average and sum when no groups are specified", () => {
         const table = loadTableFromHtml("subscriptions.simple.html");
         const instructions = getAggregateInstructions(`
-            PIVOTIFYJS_SUM:["Annual Cost"]
-            PIVOTIFYJS_AVERAGE:["Annual Cost"]
+            PIVOTIFYJS_SUMMARY_SUM:["Annual Cost"]
+            PIVOTIFYJS_SUMMARY_AVERAGE:["Annual Cost"]
         `, {
             isSummary: true
         });
+        expect(instructions).toHaveLength(2);
 
         const rowCountBefore = table.querySelectorAll("tbody tr").length;
 
