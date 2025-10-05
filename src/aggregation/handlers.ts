@@ -4,7 +4,7 @@ export const assertNumericArray = (values: unknown[], messageComposer?: (violati
     const getDefaultErrorMessage = (violations: { value: unknown; type: string }[]) => {
         const details = violations
             .map(({ value, type }) => `'${value}' (type: ${type})`);
-        return `Non-numeric values found  during summarization: ${details}. Only numeric values are allowed for aggregation.`;
+        return `Non-numeric values found during summarization: ${details}. Only numeric values are allowed for aggregation.`;
     }
 
     const nonNumericValues = values

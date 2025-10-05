@@ -89,7 +89,7 @@ describe("getComputations", () => {
       getComputeInstructions('PIVOTIFYJS_COMPUTE:"Subtotal"="${Unit Cost} * ${Quantity}"')
     );
 
-    const tableData = new TableData(document.querySelector("table")!);
+    const tableData = new TableData(table);
 
     // Find the index for the banana row
     const bananaRowIdx = tableData.rows.findIndex(row =>

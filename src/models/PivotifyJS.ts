@@ -1,7 +1,7 @@
 import { AggregateInstruction, ComputeInstruction, SummarizeInstruction } from "@/types";
 import { aggregate, getAggregateInstructions } from "@/aggregation";
 import { appendComputedColumns, getComputeInstructions } from "@/computation";
-import { getPivotingGroups } from "@/utils";
+import { getPivotingGroups, expandColspanRowspan } from "@/utils";
 import { summarize } from "@/aggregation/summarization";
 
 export class PivotifyJS {
@@ -26,8 +26,8 @@ export class PivotifyJS {
     }
 
     sanitizeTable() {
-        // TODO: expand colspan/rowspan attributes so that column and row references work correctly.
-        // TODO other sanitization logic go here...
+        expandColspanRowspan(this.table);
+        // TODO other sanitization logic go here... (to be determined)
     }
 
     compute(computeInstructions: ComputeInstruction[]) {

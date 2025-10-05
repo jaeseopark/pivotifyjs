@@ -1,11 +1,11 @@
 import { DEFAULT_DECIMAL_PLACES } from "@/constants";
 import { AGGREGATION_SIGNATURE_MAP, assertNumericArray } from "@/aggregation/handlers";
-import { TableData, ExtendedCellValue } from "@/models/TableData";
+import { TableData, ExtendedCellValue } from "@/models";
 import { AggregateOperator, CellValue } from "@/types";
 import { formatNumericCellValue } from "@/utils";
 
 
-type GetPivotIdReturnType = (allCellValues: CellValue[]) => {
+const getPivotIdGenerator = (pivots: string[], columnReverseMap: { [column: string]: number }): (allCellValues: CellValue[]) => {
     /**
      * Values corresponding to the pivot columns, in order.
      */
@@ -15,10 +15,7 @@ type GetPivotIdReturnType = (allCellValues: CellValue[]) => {
      * This is a concatenation of the underlyingCellValues with "||" separator.
      */
     pivotId: string;
-};
-
-
-const getPivotIdGenerator = (pivots: string[], columnReverseMap: { [column: string]: number }): GetPivotIdReturnType => {
+} => {
     return (allCellValues: CellValue[]) => {
         const underlyingCellValues = pivots.map(pivot => {
             const colIdx = columnReverseMap[pivot];
@@ -40,7 +37,7 @@ const getPivotIdGenerator = (pivots: string[], columnReverseMap: { [column: stri
 
 const getAggregatedCellValue = (props: { operator: AggregateOperator, values: unknown[], showOperatorLabel: boolean }) => {
     const { operator, values, showOperatorLabel } = props;
-    assertNumericArray(values, (details) => `Cannot aggregate using '${operator}' because the data contains non-numeric values: ${details}.`);
+    assertNumericArray(values, (details) => `Cannot aggregate using '${operator}' because the data contains non-numeric values: ${JSON.stringify(details)}.`);
 
     const aggResult = AGGREGATION_SIGNATURE_MAP[operator].handler(values as number[]);
 
@@ -60,22 +57,32 @@ export function collapseTable(tableData: TableData, groups: string[], aggregatio
     const columnReverseMap = tableData.columns;
     const getPivotId = getPivotIdGenerator(groups, columnReverseMap);
 
-    const grouped = tableData.rows.reduce((acc, row, rowIdx) => {
-        const cellValues = tableData.getValues({ rowIdx });
+    const grouped = tableData.rows.reduce((acc, row) => {
+        const cellValues = tableData.getValues({ row });
         const { pivotId, underlyingCellValues } = getPivotId(cellValues);
         if (!acc[pivotId]) {
-            acc[pivotId] = { staticValues: underlyingCellValues, rowIndices: [] };
+            acc[pivotId] = { staticValues: underlyingCellValues, rows: [] };
         }
-        acc[pivotId].rowIndices.push(rowIdx);
+        acc[pivotId].rows.push(row);
         return acc;
-    }, {} as { [pivotId: string]: { staticValues: CellValue[], rowIndices: number[] } });
+    }, {} as { [pivotId: string]: { staticValues: CellValue[], rows: ExtendedCellValue[][] } });
 
     const newRows: CellValue[][] = [];
 
-    Object.values(grouped).forEach(({ staticValues, rowIndices }) => {
+    Object.values(grouped).forEach(({ staticValues, rows }) => {
         const row: CellValue[] = staticValues.map(value => value || "");
         Object.entries(aggregations).forEach(([column, operators]) => {
-            const values = rowIndices.map(rowIdx => tableData.getCell({ rowIdx, col: column }).getValue());
+            const values = rows.map(row => {
+                const colIdx = columnReverseMap[column]!;
+
+                const cellValue = row[colIdx]!.getValue() as CellValue;
+
+                if (cellValue === "" || cellValue === null || cellValue === undefined) {
+                    console.log("column", column, "colIdx", colIdx, "row", row, "cellValue", cellValue);
+                }
+
+                return cellValue;
+            });
             const aggResults = (operators).map(aggregatorEnum => getAggregatedCellValue({ operator: aggregatorEnum, values, showOperatorLabel: operators.length > 1 }));
             row.push(aggResults.join(", "));
         });

@@ -14,7 +14,19 @@ export default [
       "@typescript-eslint": tseslint
     },
     rules: {
-      "no-multiple-empty-lines": ["warn", { "max": 2 }]
+      "no-multiple-empty-lines": ["warn", { "max": 2 }],
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          "vars": "all",
+          "args": "after-used",
+          "ignoreRestSiblings": false,
+          "argsIgnorePattern": "^_",
+          "varsIgnorePattern": "^_",
+          "caughtErrors": "all",
+          "caughtErrorsIgnorePattern": "^_"
+        }
+      ]
     }
   }
 ];

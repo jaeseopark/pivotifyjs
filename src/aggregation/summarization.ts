@@ -1,10 +1,10 @@
 // Summarization is a special type of aggregation that summarizes data without grouping (collapsing).
 
-import { ExtendedCellValue, TableData } from "@/models/TableData";
+import { TableData } from "@/models/TableData";
+import { ExtendedCellValue } from "@/models/ExtendedCellValue";
 import { SummarizeInstruction } from "@/types";
 import { groupInstructionsByColumn } from "./instructions";
 import { AGGREGATION_SIGNATURE_MAP, assertNumericArray } from "@/aggregation/handlers";
-import { format } from "path";
 import { formatNumericCellValue } from "@/utils";
 
 /**
@@ -22,16 +22,16 @@ export const summarize = (table: HTMLTableElement, summarizeInstructions: Summar
     const missingColumns = Object.keys(groupedInstructions).filter(column => !(column in tableData.columns));
     if (missingColumns.length > 0) {
         throw new Error(
-            `The following columns specified in summarization instructions do not exist in the table: '${missingColumns.join(", ")}'. Did you forget to include them in the group clause?`
+            `The following columns specified in summarization instructions do not exist in the table: '${missingColumns.join(", ")}'. Did you forget to include them in the GROUPS clause?`
         );
     }
 
-    const row: ExtendedCellValue[] = [];
+    const summaryRow: ExtendedCellValue[] = [];
 
     const cells: ExtendedCellValue[] = Object.entries(tableData.columns).map(([columnName, colIdx]) => {
         if (columnName in groupedInstructions) {
             const instructions = groupedInstructions[columnName]!;
-            const columnValues = tableData.getValues({ colIdx });
+            const columnValues = tableData.getValues({ column: colIdx });
 
             assertNumericArray(columnValues, (details) => `Cannot summarize column '${columnName}' because it contains non-numeric values: ${details}.`);
 
@@ -50,8 +50,8 @@ export const summarize = (table: HTMLTableElement, summarizeInstructions: Summar
         }
     });
 
-    row.push(...cells);
-    tableData.rows.push(row);
+    summaryRow.push(...cells);
+    tableData.rows.push(summaryRow);
 
     table.innerHTML = tableData.getHtmlTableElement().innerHTML;
 };

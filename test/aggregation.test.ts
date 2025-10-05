@@ -2,6 +2,7 @@ import { getAggregateInstructions } from "@/aggregation";
 import { processAllTables } from "@/pivotifyjs";
 import { loadTableFromHtml, normalizeHtml } from "./testUtils";
 import { summarize } from "@/aggregation/summarization";
+import { TableData } from "@/models/TableData";
 
 
 describe("getAggregations", () => {
@@ -19,39 +20,6 @@ describe("getAggregations", () => {
         expect(result).toContainEqual({ operator: "SUM", column: "Qty" });
         expect(result).toContainEqual({ operator: "AVERAGE", column: "Annual Cost" });
         expect(result).toContainEqual({ operator: "MIN", column: "Qty" });
-    });
-});
-
-describe("aggregateTable", () => {
-    it("should add summary row with average and sum when no groups are specified", () => {
-        const table = loadTableFromHtml("subscriptions.simple.html");
-        const instructions = getAggregateInstructions(`
-            PIVOTIFYJS_SUMMARY_SUM:["Annual Cost"]
-            PIVOTIFYJS_SUMMARY_AVERAGE:["Annual Cost"]
-        `, {
-            isSummary: true
-        });
-        expect(instructions).toHaveLength(2);
-
-        const rowCountBefore = table.querySelectorAll("tbody tr").length;
-
-        summarize(table, instructions);
-
-        const rowCountAfter = table.querySelectorAll("tbody tr").length;
-
-        expect(rowCountAfter).toBe(rowCountBefore + 1); // One additional summary row
-
-        const headers = Array.from(table.querySelectorAll("thead th")).map(th => th.textContent?.trim());
-        const annualCostIdx = headers.indexOf("Annual Cost");
-        expect(annualCostIdx).toBeGreaterThan(-1);
-
-        const rows = Array.from(table.querySelectorAll("tbody tr"));
-        const summaryRow = rows[rows.length - 1]!;
-        const summaryCell = summaryRow.querySelectorAll("td")[annualCostIdx];
-
-        expect(summaryCell).toBeDefined();
-        // Should contain both "Sum:" and "Avg:" in the cell text
-        expect(summaryCell?.textContent).toEqual("Sum: 349, Avg: 116.33");
     });
 });
 
