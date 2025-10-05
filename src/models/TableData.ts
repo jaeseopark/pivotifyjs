@@ -57,6 +57,13 @@ export class TableData {
         return row[colIdx!]!;
     }
 
+    getValue({ row, col }: { row: ExtendedCellValue[] | number, col: string | number }): CellValue {
+        // Resolve row index and column index
+        const rowArr = Array.isArray(row) ? row : this.rows[row]!;
+        const colIdx = typeof col === "string" ? this.columns[col] : col;
+        return rowArr[colIdx!]!.getValue();
+    }
+
     getValues(props: { row: ExtendedCellValue[] | number } | { column: string | number }): CellValue[] {
         if ("row" in props) {
             const cells = Array.isArray(props.row) ? props.row : this.rows[props.row]!;
@@ -75,7 +82,8 @@ export class TableData {
 
     getHtmlTableElement(): HTMLTableElement {
         const thead = `<thead><tr>${Object.keys(this.columns).map(col => `<th>${col}</th>`).join("")}</tr></thead>`;
-        const tbody = `<tbody>${this.rows.map(row => `<tr>${row.map(cell => `<td>${cell.getValue()}</td>`).join("")}</tr>`).join("")}</tbody>`;
+        // Note: should have to put || "" after calling getValue() here. probably a bug somewhere.
+        const tbody = `<tbody>${this.rows.map(row => `<tr>${row.map(cell => `<td>${cell.getValue() || ""}</td>`).join("")}</tr>`).join("")}</tbody>`;
 
         const table = document.createElement("table");
         table.innerHTML = thead + tbody;

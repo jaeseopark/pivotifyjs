@@ -1,15 +1,13 @@
-import {
-    COMPUTE_KEYWORD
-} from "@/constants";
-import { ComputeInstruction } from "@/types";
-
-// Note this file uses raw HTML processing. TODO: use the TableData model instead.
+import { COMPUTE_KEYWORD } from "@/constants";
+import { CellValue, ComputeInstruction } from "./types";
+import { TableData } from "@/models/TableData";
+import { ExtendedCellValue } from "@/models/ExtendedCellValue";
 
 /**
- * Parses compute lines. Only 1 computed field allowed per line, separated by <br> tags or by newlines.
+ * Parses PIVOTIFYJS_COMPUTE lines. Only 1 computed field allowed per line, separated by <br> tags or by newlines.
  * 
  * @param {string} text
- * @returns {Array<{column:string, equation:string, variables:Array<{column:string, default:string|number}>}>}
+ * @returns {ComputeInstruction[]}
  */
 export const getComputeInstructions = (text: string): ComputeInstruction[] => {
     // Support both <br> and newline as line separators (Windows compatible)
@@ -42,64 +40,57 @@ export const getComputeInstructions = (text: string): ComputeInstruction[] => {
 };
 
 /**
- * Given an HTMLTableElement, mutates the table to append new computed columns, as specified in the 'text' string.
+ * Given a TableData object, mutates it to append new computed columns, as specified in the instructions.
  *
- * @param {HTMLTableElement} table - The source table element.
+ * @param {TableData | HTMLTableElement} tableOrTableData - The source TableData object or HTMLTableElement.
+ * @param {ComputeInstruction[]} instructions - Array of compute instructions.
  */
-export const appendComputedColumns = (table: HTMLTableElement, instructions: ComputeInstruction[]) => {
-    instructions.forEach(comp => {
-        // Note headers need to be re-fetched for each computation in case multiple computations are chained.
-        const tr = table.querySelector("thead tr");
-        const theadCells = tr!.querySelectorAll("th"); // assume only one thead row in a table.
-        const headers = Array.from(theadCells).map(th => th.textContent.trim());
+export const appendComputedColumns = (
+    table: HTMLTableElement,
+    instructions: ComputeInstruction[]
+) => {
+    // Always create a TableData instance from the HTMLTableElement
+    const tableData = new TableData(table);
 
-        // Build columnReverseIndex: { [columnName: string]: number }
-        const columnReverseIndex = headers.reduce((acc, header, idx) => {
-            acc[header] = idx;
-            return acc;
-        }, {} as { [column: string]: number });
+    instructions.forEach(instruction => {
+        // Add new column to TableData
+        const colIdx = Object.keys(tableData.columns).length;
+        tableData.columns[instruction.column] = colIdx;
 
-        // Add new column header
-        const th = document.createElement("th");
-        th.textContent = comp.column;
-        tr!.appendChild(th);
+        // For each row, compute the value and append as ExtendedCellValue
+        tableData.rows.forEach((row) => {
+            let substitutedEquation = instruction.equation;
+            instruction.variables.forEach(variable => {
+                const fetchedValue: CellValue = tableData.getValue({ row, col: variable.column });
 
-        // Re-query rows after header change
-        const trs = table.querySelectorAll("tbody tr");
-        trs.forEach(tr => {
-            const row = tr.querySelectorAll("td");
+                let value: string;
 
-            // Substitute variables in the equation with actual values from the row
-            let substitutedEquation = comp.equation;
-            comp.variables.forEach(variable => {
-                const colIdx: number = columnReverseIndex[variable.column];
-                let value = variable.default;
-                if (colIdx !== undefined && row[colIdx]) {
-                    value = row[colIdx].textContent.trim();
-                }
-                try {
-                    value = eval(value);
-                } catch (error) {
-                    // swallow
-                }
-                if (!isNaN(Number(value))) {
-                    // Replace all occurrences of the variable in the equation with its numeric value
-                    const regex = new RegExp(`\\$\\{${variable.column}\\}`, "g");
-                    substitutedEquation = substitutedEquation.replace(regex, value);
+                if (typeof fetchedValue === "number") {
+                    value = fetchedValue.toString();
                 } else {
-                    throw new Error(`Non-numeric value for column ${variable.column}: '${value}' typeof: ${typeof value}`);
+                    value = String(fetchedValue).trim();
                 }
+
+                // Substitute variable in equation
+                const regex = new RegExp(`\\$\\{${variable.column}(?::[^}]*)?\\}`, "g");
+                substitutedEquation = substitutedEquation.replace(regex, value || variable.default || "");
             });
 
-            // TODO: make this more secure. passing user input to eval is dangerous.
-            const computedValue = eval(substitutedEquation);
-            if (computedValue === undefined || computedValue === null || isNaN(computedValue)) {
+            let computedValue: string | number;
+            try {
+                computedValue = eval(substitutedEquation);
+            } catch {
+                throw new Error(`Computation resulted in invalid value for equation: '${substitutedEquation}'`);
+            }
+            if (computedValue === undefined || computedValue === null || isNaN(Number(computedValue))) {
                 throw new Error(`Computation resulted in invalid value for equation: '${substitutedEquation}'`);
             }
 
-            const td = document.createElement("td");
-            td.textContent = computedValue;
-            tr.appendChild(td);
+            row.push(new ExtendedCellValue({ resolvedValue: computedValue }));
         });
     });
+
+    // Update the DOM table with the computed columns
+    const newTable = tableData.getHtmlTableElement();
+    table.innerHTML = newTable.innerHTML;
 };

@@ -36,7 +36,7 @@ export class ExtendedCellValue {
         try {
             // unresolved value could be a string representation of a numeric expression.
             val = eval(val);
-        } catch (_) {
+        } catch {
             // swallow
         }
 
