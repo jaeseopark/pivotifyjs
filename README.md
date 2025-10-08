@@ -90,11 +90,11 @@ You will see summary rows added for each group and the grand total row at the bo
      Create new columns by performing calculations or referencing other columns (e.g., `PIVOTIFYJS_COMPUTE:"Subtotal"="${Unit Cost} * ${Qty}"`).
   2. **Aggregate Instructions (Group-level):**  
      Summarize data within groups (e.g., `PIVOTIFYJS_GROUPS:["Category"]` and `PIVOTIFYJS_SUM:["Subtotal"]`).
-  3. **Global Summary Instructions:**  
+  3. **Styling Instructions:**  
+     Apply styles such as color gradients to table cells based on their values (see below).
+  4. **Global Summary Instructions:**  
      Add summary rows to the bottom of the table, often for grand totals or overall statistics (e.g., `PIVOTIFYJS_SUMMARY_SUM:["Subtotal"]`).  
      These work similarly to aggregate instructions but apply to the whole table.
-  4. **Styling Instructions:**  
-     Apply styles such as color gradients to table cells based on their values (see below).
 
 ---
 
@@ -152,6 +152,8 @@ All instructions must be placed directly below the table to be processed.
   - `from`: The color for the lowest value (any valid CSS color).
   - `to`: The color for the highest value (any valid CSS color).
   - `target`: `"bg"`/`"background"` for background color, `"text"` for text color (optional, default is `"background"`).
+
+  Note only one of `from` and `to` is required. The other will default to `transparent`.
 
   **Example:**
   ```html
