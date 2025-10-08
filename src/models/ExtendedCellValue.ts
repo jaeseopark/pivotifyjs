@@ -62,7 +62,9 @@ export class ExtendedCellValue {
         const td = document.createElement("td");
         // putting ?? to account for 0 (numeric zero) case.
         td.textContent = String(this.getValue() ?? "");
-        td.style.cssText = this.cssStyle;
+        if (this.cssStyle) {
+            td.style.cssText = this.cssStyle;
+        }
         return td;
     }
 }
