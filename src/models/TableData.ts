@@ -55,7 +55,12 @@ export class TableData {
         // Resolve row index and column index
         const rowArr = Array.isArray(row) ? row : this.rows[row]!;
         const colIdx = typeof col === "string" ? this.columns[col] : col;
-        return rowArr[colIdx!]!.getValue();
+        try {
+            return rowArr[colIdx!]!.getValue();
+
+        } catch {
+               console.log(`[TableData] rowArr[${colIdx}] is undefined. rowArr:`, rowArr, "colIdx:", colIdx, "row:", row, "col:", col);
+        }
     }
 
     getValues(props: { row: ExtendedCellValue[] | number } | { column: string | number }): CellValue[] {
@@ -65,7 +70,12 @@ export class TableData {
         } else {
             return this.rows.map((row) => {
                 const colIdx = typeof props.column === "string" ? this.columns[props.column] : props.column;
-                return row[colIdx!]!.getValue();
+                try {
+                    return row[colIdx!]!.getValue();
+                } catch {
+                    console.log(`[TableData] row[${colIdx}] is undefined. row:`, row, "colIdx:", colIdx, "props:", props);
+                    return "";
+                }
             });
         }
     }

@@ -1,6 +1,5 @@
 import { TableData } from "@/models";
-import { GradientInstruction, StyleInstruction } from "@/types";
-import { StyleAgent } from "@/types";
+import { GradientInstruction, StyleInstruction, StyleAgent } from "@/types";
 import tinycolor from "tinycolor2";
 
 const validateColor = (value: string): string => {
@@ -36,11 +35,29 @@ const PARAM_SANITIZERS = {
     }
 };
 
-const getColor = (value: number, min: number, max: number, fromColor: string, toColor: string): string => {
+export const getColor = (value: number, min: number, max: number, fromColor: string, toColor: string): string => {
+    // Handle edge case where min === max (all values are the same)
+    if (min === max) {
+        return fromColor;
+    }
 
+    // Calculate the ratio (0 to 1) of where value falls between min and max
+    const ratio = (value - min) / (max - min);
+
+    // Clamp ratio between 0 and 1
+    const clampedRatio = Math.max(0, Math.min(1, ratio));
+
+    // Use tinycolor to interpolate between the two colors
+    const from = tinycolor(fromColor);
+    const to = tinycolor(toColor);
+
+    // Interpolate between colors using the ratio
+    const interpolated = tinycolor.mix(from, to, clampedRatio * 100);
+
+    // Return as rgba to preserve opacity
+    return interpolated.toRgbString();
 };
 
-// Example implementation for GradientAgent
 export class GradientAgent implements StyleAgent {
     getInstructions(text: string): StyleInstruction[] {
         const GRADIENT_KEYWORD = "PIVOTIFYJS_STYLE_GRADIENT";
@@ -97,13 +114,21 @@ export class GradientAgent implements StyleAgent {
         const allCellValues = tableData.getValues({ column: instruction.column });
         const min = Math.min(...allCellValues as number[]);
         const max = Math.max(...allCellValues as number[]);
-
+        
         tableData.rows.forEach(row => {
             const cell = row[tableData.columns[instruction.column]!]!;
             const value = cell.getValue();
+
+            if (typeof value !== "number" || isNaN(value)) {
+                // Skip non-numeric or NaN values
+                return;
+            }
+
             const color = getColor(value as number, min, max, instruction.from, instruction.to);
-            const colorKey = instruction.target === "background" ? "backgroundColor" : "color";
+            const colorKey = instruction.target === "background" ? "background-color" : "color";
             cell.cssStyle = `${colorKey}: ${color};`;
         });
+
+        table.innerHTML = tableData.getHtmlTableElement().innerHTML;
     }
 }
