@@ -24,7 +24,7 @@ export class TableData {
                             return "";
                         }
 
-                        return String(this.getCell({ rowIdx, col: colIdx }).getValue());
+                        return String(this.getValue({ row: rowIdx, col: colIdx }));
                     });
                     return val;
                 }
@@ -49,12 +49,6 @@ export class TableData {
                 return filled;
             });
         }
-    }
-
-    private getCell({ rowIdx, col }: { rowIdx: number, col: string | number }): ExtendedCellValue {
-        const row = this.rows[rowIdx]!;
-        const colIdx = typeof col === "string" ? this.columns[col] : col;
-        return row[colIdx!]!;
     }
 
     getValue({ row, col }: { row: ExtendedCellValue[] | number, col: string | number }): CellValue {

@@ -1,3 +1,4 @@
+import { TableData } from "@/models";
 import { GradientInstruction, StyleInstruction } from "@/types";
 import { StyleAgent } from "@/types";
 import tinycolor from "tinycolor2";
@@ -33,6 +34,10 @@ const PARAM_SANITIZERS = {
         validate: validateColor,
         default: "transparent"
     }
+};
+
+const getColor = (value: number, min: number, max: number, fromColor: string, toColor: string): string => {
+
 };
 
 // Example implementation for GradientAgent
@@ -88,7 +93,17 @@ export class GradientAgent implements StyleAgent {
     }
 
     apply(table: HTMLTableElement, instruction: GradientInstruction): void {
-        // Apply the gradient style to the table data
-        // Implementation omitted for brevity
+        const tableData = new TableData(table);
+        const allCellValues = tableData.getValues({ column: instruction.column });
+        const min = Math.min(...allCellValues as number[]);
+        const max = Math.max(...allCellValues as number[]);
+
+        tableData.rows.forEach(row => {
+            const cell = row[tableData.columns[instruction.column]!]!;
+            const value = cell.getValue();
+            const color = getColor(value as number, min, max, instruction.from, instruction.to);
+            const colorKey = instruction.target === "background" ? "backgroundColor" : "color";
+            cell.cssStyle = `${colorKey}: ${color};`;
+        });
     }
 }

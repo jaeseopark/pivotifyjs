@@ -60,7 +60,7 @@ export class ExtendedCellValue {
         // putting ?? to account for 0 (numeric zero) case.
         td.textContent = String(this.getValue() ?? "");
         if (this.cssStyle) {
-            td.style.cssText = this.cssStyle;
+            Object.assign(td.style, this.cssStyle);
         }
         return td;
     }
