@@ -111,10 +111,12 @@ export class GradientAgent implements StyleAgent {
 
     apply(table: HTMLTableElement, instruction: GradientInstruction): void {
         const tableData = new TableData(table);
-        const allCellValues = tableData.getValues({ column: instruction.column });
-        const min = Math.min(...allCellValues as number[]);
-        const max = Math.max(...allCellValues as number[]);
-        
+        const allNumericValues = tableData
+            .getValues({ column: instruction.column })
+            .filter(v => typeof v === "number" && !isNaN(v));
+        const min = Math.min(...allNumericValues as number[]);
+        const max = Math.max(...allNumericValues as number[]);
+
         tableData.rows.forEach(row => {
             const cell = row[tableData.columns[instruction.column]!]!;
             const value = cell.getValue();
