@@ -11,7 +11,7 @@ export class ExtendedCellValue {
     private value: CellValue;
     private isResolved: boolean;
     private substitute?: () => string;
-    public cssStyle?: string;
+    public cssStyle: string;
 
     constructor(props: ExtendedCellValueProps) {
         this.cssStyle = props.cssStyle || "";
@@ -62,9 +62,7 @@ export class ExtendedCellValue {
         const td = document.createElement("td");
         // putting ?? to account for 0 (numeric zero) case.
         td.textContent = String(this.getValue() ?? "");
-        if (this.cssStyle) {
-            td.style.cssText = this.cssStyle;
-        }
+        td.style.cssText = this.cssStyle;
         return td;
     }
 }
