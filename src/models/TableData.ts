@@ -33,6 +33,7 @@ export class TableData {
                 const firstFew = Array.from(row.querySelectorAll("td")).map((td) => {
                     const unresolvedValue = td.textContent?.trim() ?? "";
                     return new ExtendedCellValue({
+                        cssStyle: td.getAttribute("style") || "",
                         unresolvedValue,
                         substitute: getSubstituteFunction(unresolvedValue)
                     });

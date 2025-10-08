@@ -90,8 +90,8 @@ const processTable = (table: HTMLTableElement, p: HTMLParagraphElement): HTMLTab
     pivotifyJs.sanitizeTable();
     pivotifyJs.compute(computeInstructions);
     pivotifyJs.aggregate(pivotingGroups, aggregateInstructions);
-    pivotifyJs.summarize(summarizeInstructions);
     pivotifyJs.stylize(styleInstructions);
+    pivotifyJs.summarize(summarizeInstructions);
 
     // Return the modified copy of the table
     return pivotifyJs.table;

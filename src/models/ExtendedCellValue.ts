@@ -1,6 +1,8 @@
 import { CellValue } from "@/types";
 
-type ExtendedCellValueProps = { resolvedValue: CellValue } | { unresolvedValue: string, substitute: () => string };
+type ExtendedCellValueProps = {
+    cssStyle?: string;
+} & ({ resolvedValue: CellValue } | { unresolvedValue: string, substitute: () => string });
 
 /**
  * Represents a cell value that can be resolved from a string expression or substituted variable.
@@ -12,6 +14,7 @@ export class ExtendedCellValue {
     public cssStyle?: string;
 
     constructor(props: ExtendedCellValueProps) {
+        this.cssStyle = props.cssStyle || "";
         if ('resolvedValue' in props) {
             this.value = props.resolvedValue;
             this.isResolved = true;
