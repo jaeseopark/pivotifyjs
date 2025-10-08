@@ -83,7 +83,7 @@ export class TableData {
     getHtmlTableElement(): HTMLTableElement {
         const thead = `<thead><tr>${Object.keys(this.columns).map(col => `<th>${col}</th>`).join("")}</tr></thead>`;
         // Note: should have to put || "" after calling getValue() here. probably a bug somewhere.
-        const tbody = `<tbody>${this.rows.map(row => `<tr>${row.map(cell => `<td>${cell.getValue() || ""}</td>`).join("")}</tr>`).join("")}</tbody>`;
+        const tbody = `<tbody>${this.rows.map(row => `<tr>${row.map(cell => `<td>${cell.getValue() ?? ""}</td>`).join("")}</tr>`).join("")}</tbody>`;
 
         const table = document.createElement("table");
         table.innerHTML = thead + tbody;
