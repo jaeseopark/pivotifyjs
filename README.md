@@ -93,6 +93,8 @@ You will see summary rows added for each group and the grand total row at the bo
   3. **Global Summary Instructions:**  
      Add summary rows to the bottom of the table, often for grand totals or overall statistics (e.g., `PIVOTIFYJS_SUMMARY_SUM:["Subtotal"]`).  
      These work similarly to aggregate instructions but apply to the whole table.
+  4. **Styling Instructions:**  
+     Apply styles such as color gradients to table cells based on their values (see below).
 
 ---
 
@@ -140,7 +142,34 @@ All instructions must be placed directly below the table to be processed.
     - Each operator (e.g., `SUM`, `MIN`, `MAX`, `AVERAGE`, `MEDIAN`) is specified on its own line.
     - Multiple operator instructions can be provided.
 
-### 3. Summary Instructions
+### 3. Gradient Styling Instructions
+
+- **Syntax:**  
+  ```
+  PIVOTIFYJS_STYLE_GRADIENT:"ColumnName"="from:color1;to:color2;target:bg"
+  ```
+  - `"ColumnName"`: The column to apply the gradient to (in quotes).
+  - `from`: The color for the lowest value (any valid CSS color).
+  - `to`: The color for the highest value (any valid CSS color).
+  - `target`: `"bg"`/`"background"` for background color, `"text"` for text color (optional, default is `"background"`).
+
+  **Example:**
+  ```html
+  <p>
+    PIVOTIFYJS_STYLE_GRADIENT:"Cost"="from:green;to:red"
+  </p>
+  ```
+
+  This will color the cells in the "Cost" column from green (lowest value) to red (highest value).
+
+  **Result:**
+  ```html
+  <td style="background-color: rgb(0, 128, 0);">25</td>
+  <td style="background-color: rgb(135, 60, 0);">120</td>
+  <td style="background-color: rgb(255, 0, 0);">204</td>
+  ```
+
+### 4. Summary Instructions
 
 - **Syntax:**  
   ```
@@ -149,11 +178,6 @@ All instructions must be placed directly below the table to be processed.
   ```
   - Similar to aggregation instructions, but summary rows are added to the bottom of the table.
   - Multiple summary operators can be provided.
-
-**Note:**  
-- All three categories of instructions (compute, aggregation, summary) are optional.
-- You may use just one, two, or all three, depending on your needs.
-- If no instructions are provided, PivotifyJS will leave the table untouched.
 
 ---
 
