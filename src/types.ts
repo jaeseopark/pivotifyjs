@@ -27,4 +27,32 @@ export type AggregateInstructionsWithGroups = {
     aggregateInstructions: AggregateInstruction[];
 }
 
+
+export type BaseStyleInstruction = {
+    column: string;
+}
+
+export type GradientInstruction = BaseStyleInstruction & {
+    type: "gradient";
+    target: "background" | "text";
+    from: string;
+    to: string;
+};
+
+export type DimensionInstruction = BaseStyleInstruction & {
+    // This is a placeholder
+    type: "dimension";
+    width: string;
+};
+
+export type StyleInstruction = GradientInstruction | DimensionInstruction;
+
+
+export interface StyleAgent {
+    getInstructions(text: string): StyleInstruction[];
+    isCompatible(instruction: StyleInstruction): boolean;
+    apply(table: HTMLTableElement, instruction: StyleInstruction): void;
+}
+
+
 export type CellValue = string | number;

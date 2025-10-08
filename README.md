@@ -1,6 +1,6 @@
 # PivotifyJS
 
-**PivotifyJS** brings spreadsheet-like pivot table features to plain HTML tables. It’s lightweight, dependency-free, and works right in the browser.
+**PivotifyJS** brings spreadsheet-like pivot table features to plain HTML tables.
 
 ---
 
@@ -67,7 +67,7 @@
 
 3. **Script does the rest**
 
-You will see summary rows added for each group and a grand total, with computed values, and the grand total row at the bottom across all rows in the table:
+You will see summary rows added for each group and the grand total row at the bottom of the table:
 
 **Sample Output:**
 
@@ -90,7 +90,9 @@ You will see summary rows added for each group and a grand total, with computed 
      Create new columns by performing calculations or referencing other columns (e.g., `PIVOTIFYJS_COMPUTE:"Subtotal"="${Unit Cost} * ${Qty}"`).
   2. **Aggregate Instructions (Group-level):**  
      Summarize data within groups (e.g., `PIVOTIFYJS_GROUPS:["Category"]` and `PIVOTIFYJS_SUM:["Subtotal"]`).
-  3. **Global Summary Instructions:**  
+  3. **Styling Instructions:**  
+     Apply styles such as color gradients to table cells based on their values (see below).
+  4. **Global Summary Instructions:**  
      Add summary rows to the bottom of the table, often for grand totals or overall statistics (e.g., `PIVOTIFYJS_SUMMARY_SUM:["Subtotal"]`).  
      These work similarly to aggregate instructions but apply to the whole table.
 
@@ -109,7 +111,7 @@ All instructions must be placed directly below the table to be processed.
   - `"NewField"`: The name of the new computed column (in quotes).
   - `"Equation"`: The formula or expression to compute (in quotes).
   - Reference other columns using `${ColumnName}` syntax.
-  - Numeric operations (e.g., `+`, `-`, `*`, `/`) are supported.
+  - Arithmetic operations (e.g., `+`, `-`, `*`, `/`) are supported.
   - Simple string manipulations (e.g., concatenation) are also supported:  
     ```
     PIVOTIFYJS_COMPUTE:"Full Name"="${First} ${Last}"
@@ -140,7 +142,36 @@ All instructions must be placed directly below the table to be processed.
     - Each operator (e.g., `SUM`, `MIN`, `MAX`, `AVERAGE`, `MEDIAN`) is specified on its own line.
     - Multiple operator instructions can be provided.
 
-### 3. Summary Instructions
+### 3. Gradient Styling Instructions
+
+- **Syntax:**  
+  ```
+  PIVOTIFYJS_STYLE_GRADIENT:"ColumnName"="from:color1;to:color2;target:bg"
+  ```
+  - `"ColumnName"`: The column to apply the gradient to (in quotes).
+  - `from`: The color for the lowest value (any valid CSS color).
+  - `to`: The color for the highest value (any valid CSS color).
+  - `target`: `"bg"`/`"background"` for background color, `"text"` for text color (optional, default is `"background"`).
+
+  Note only one of `from` and `to` is required. The other will default to `transparent`.
+
+  **Example:**
+  ```html
+  <p>
+    PIVOTIFYJS_STYLE_GRADIENT:"Cost"="from:green;to:red"
+  </p>
+  ```
+
+  This will color the cells in the "Cost" column from green (lowest value) to red (highest value).
+
+  **Result:**
+  ```html
+  <td style="background-color: rgb(0, 128, 0);">25</td>
+  <td style="background-color: rgb(135, 60, 0);">120</td>
+  <td style="background-color: rgb(255, 0, 0);">204</td>
+  ```
+
+### 4. Summary Instructions
 
 - **Syntax:**  
   ```
@@ -152,42 +183,8 @@ All instructions must be placed directly below the table to be processed.
 
 ---
 
-**Note:**  
-- All three categories of instructions (compute, aggregation, summary) are optional.
-- You may use just one, two, or all three, depending on your needs.
-- If no instructions are provided, PivotifyJS will leave the table untouched.
-
----
-
-## ⚙️ How PivotifyJS Works
-
-- **Instruction Execution Order:**  
-  1. **Computation:**  
-     All compute instructions are processed first, creating new columns as needed.
-  2. **Aggregation:**  
-     Grouping and aggregation instructions are applied next.  
-     Note: Aggregation may drop unused columns, so ensure any columns referenced in summary instructions are retained.
-  3. **Summary:**  
-     Global summary instructions are executed last, adding summary rows to the bottom of the table.
-
-- **Order of Instructions:**  
-  The order of instructions in the block is generally not important, except for the interaction between aggregation and summary (see above).
-
-- **Input Validation & Precedence:**  
-  - If conflicting or duplicate instructions are given, the first valid instruction for each column/operator is used.
-  - Variable references to missing columns use the provided default value, or empty string if none is provided.
-  - Blank `<td>` elements should be omitted; PivotifyJS will handle missing data gracefully.
-
----
-
 ## 🧩 Additional Features
 
 - **Support for Merged Cells:**  
   Tables using `rowspan` and `colspan` are automatically normalized.  
   Column and row references work correctly, even with merged cells.
-
-- **Arithmetic Expressions:**  
-  Cells can contain arithmetic expressions (e.g., `0.50/2`), which are evaluated automatically.
-
-- **Flexible Aggregation:**  
-  Supports `SUM`, `AVERAGE`, `MIN`, `MAX`, `MEDIAN` operators for both group-level and global summary calculations.

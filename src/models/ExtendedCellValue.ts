@@ -1,6 +1,8 @@
 import { CellValue } from "@/types";
 
-type ExtendedCellValueProps = { resolvedValue: CellValue } | { unresolvedValue: string, substitute: () => string };
+type ExtendedCellValueProps = {
+    cssStyle?: string;
+} & ({ resolvedValue: CellValue } | { unresolvedValue: string, substitute: () => string });
 
 /**
  * Represents a cell value that can be resolved from a string expression or substituted variable.
@@ -9,8 +11,10 @@ export class ExtendedCellValue {
     private value: CellValue;
     private isResolved: boolean;
     private substitute?: () => string;
+    public cssStyle: string;
 
     constructor(props: ExtendedCellValueProps) {
+        this.cssStyle = props.cssStyle || "";
         if ('resolvedValue' in props) {
             this.value = props.resolvedValue;
             this.isResolved = true;
@@ -52,5 +56,15 @@ export class ExtendedCellValue {
             this.isResolved = true;
         }
         return this.value;
+    }
+
+    getHtmlCellElement(): HTMLTableCellElement {
+        const td = document.createElement("td");
+        // putting ?? to account for 0 (numeric zero) case.
+        td.textContent = String(this.getValue() ?? "");
+        if (this.cssStyle) {
+            td.style.cssText = this.cssStyle;
+        }
+        return td;
     }
 }

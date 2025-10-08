@@ -24,7 +24,7 @@ export class TableData {
                             return "";
                         }
 
-                        return String(this.getCell({ rowIdx, col: colIdx }).getValue());
+                        return String(this.getValue({ row: rowIdx, col: colIdx }));
                     });
                     return val;
                 }
@@ -33,6 +33,7 @@ export class TableData {
                 const firstFew = Array.from(row.querySelectorAll("td")).map((td) => {
                     const unresolvedValue = td.textContent?.trim() ?? "";
                     return new ExtendedCellValue({
+                        cssStyle: td.getAttribute("style") || "",
                         unresolvedValue,
                         substitute: getSubstituteFunction(unresolvedValue)
                     });
@@ -49,12 +50,6 @@ export class TableData {
                 return filled;
             });
         }
-    }
-
-    private getCell({ rowIdx, col }: { rowIdx: number, col: string | number }): ExtendedCellValue {
-        const row = this.rows[rowIdx]!;
-        const colIdx = typeof col === "string" ? this.columns[col] : col;
-        return row[colIdx!]!;
     }
 
     getValue({ row, col }: { row: ExtendedCellValue[] | number, col: string | number }): CellValue {
@@ -82,8 +77,7 @@ export class TableData {
 
     getHtmlTableElement(): HTMLTableElement {
         const thead = `<thead><tr>${Object.keys(this.columns).map(col => `<th>${col}</th>`).join("")}</tr></thead>`;
-        // Note: should have to put || "" after calling getValue() here. probably a bug somewhere.
-        const tbody = `<tbody>${this.rows.map(row => `<tr>${row.map(cell => `<td>${cell.getValue() ?? ""}</td>`).join("")}</tr>`).join("")}</tbody>`;
+        const tbody = `<tbody>${this.rows.map(row => `<tr>${row.map(cell => cell.getHtmlCellElement().outerHTML).join("")}</tr>`).join("")}</tbody>`;
 
         const table = document.createElement("table");
         table.innerHTML = thead + tbody;
